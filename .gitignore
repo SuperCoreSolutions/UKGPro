@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+
+# Build/publish output
+*.nupkg
+output/
+
+# Local secrets — never commit credentials
+*.secret
+*.env
