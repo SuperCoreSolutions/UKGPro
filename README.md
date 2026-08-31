@@ -52,8 +52,12 @@ Credentials are stored in a module-private session and attached automatically; y
 ## Examples
 
 ```powershell
-# One employee
+# One employee, by ID
 Get-UKGProEmploymentDetails -EmployeeId '000123'
+
+# One employee, by email — resolves via /person-details (View-only) under
+# the hood and then queries employment-details with the resolved ID.
+Get-UKGProEmploymentDetails -EmailAddress 'alex.doe@example.com'
 
 # Offboarding candidates: terminated in the last 30 days
 Get-UKGProEmploymentDetails -TerminatedOn (Get-Date).AddDays(-30) -TerminatedOperator GreaterThan

@@ -22,6 +22,13 @@ function Get-UKGProEmploymentDetails {
     .PARAMETER EmployeeId
         Filter by employee identifier.
 
+    .PARAMETER EmailAddress
+        Filter by the employee's UKG-registered email address. The email is
+        resolved to an employee ID via GET /personnel/v1/person-details (a
+        read-only endpoint requiring only the View role) and the resolved ID
+        is then used for the employment-details query. Mutually exclusive
+        with -EmployeeId.
+
     .PARAMETER EmployeeNumber
         Filter by employee number.
 
@@ -69,6 +76,13 @@ function Get-UKGProEmploymentDetails {
         Retrieves employment details for one employee.
 
     .EXAMPLE
+        Get-UKGProEmploymentDetails -EmailAddress 'alex.doe@example.com'
+
+        Looks up the employee by email (via person-details) and returns their
+        employment details. Equivalent to -EmployeeId but avoids needing to
+        know the ID up front.
+
+    .EXAMPLE
         Get-UKGProEmploymentDetails -TerminatedOn (Get-Date).AddDays(-30) -TerminatedOperator GreaterThan
 
         Employees terminated in the last 30 days (offboarding candidates).
@@ -88,6 +102,7 @@ function Get-UKGProEmploymentDetails {
     param (
         [Parameter()] [string]$CompanyId,
         [Parameter()] [string]$EmployeeId,
+        [Parameter()] [string]$EmailAddress,
         [Parameter()] [string]$EmployeeNumber,
         [Parameter()] [string]$EmployeeStatusCode,
         [Parameter()] [string]$EmployeeTypeCode,
@@ -118,6 +133,17 @@ function Get-UKGProEmploymentDetails {
         [Parameter()] [int]$MaxResults = 0,
         [Parameter()] [int]$PageSize   = 100
     )
+
+    if ($EmailAddress -and $EmployeeId) {
+        throw "-EmailAddress and -EmployeeId cannot be used together. Choose one."
+    }
+
+    # Resolve email -> employeeId up front so the rest of the query flow is
+    # identical to the -EmployeeId path. Uses a View-only GET resolver.
+    if ($EmailAddress) {
+        $resolved = Resolve-UKGProEmployeeIdByEmail -EmailAddress $EmailAddress
+        $EmployeeId = $resolved.EmployeeId
+    }
 
     $q = @{}
     if ($CompanyId)               { $q['companyId']               = $CompanyId }

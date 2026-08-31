@@ -92,3 +92,83 @@ Describe 'Connect-UKGPro and request assembly' {
         }
     }
 }
+
+Describe 'Resolve-UKGProEmployeeIdByEmail' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'h' -Credential $cred -CustomerApiKey 'k' -UserApiKey 'u'
+        }
+
+        It 'returns EmployeeId and CompanyId when person-details returns one match' {
+            Mock Invoke-RestMethod {
+                @([pscustomobject]@{ employeeId = '000123'; companyId = 'ACME'; emailAddress = 'a@x.com' })
+            }
+            $r = Resolve-UKGProEmployeeIdByEmail -EmailAddress 'a@x.com'
+            $r.EmployeeId | Should -Be '000123'
+            $r.CompanyId  | Should -Be 'ACME'
+        }
+
+        It 'throws "no employee found" when the response is empty' {
+            Mock Invoke-RestMethod { @() }
+            { Resolve-UKGProEmployeeIdByEmail -EmailAddress 'nobody@nowhere.example' } |
+                Should -Throw "*No employee found*nobody@nowhere.example*"
+        }
+
+        It 'throws "multiple employees" when the response has more than one match' {
+            Mock Invoke-RestMethod {
+                @(
+                    [pscustomobject]@{ employeeId = '1'; companyId = 'A' }
+                    [pscustomobject]@{ employeeId = '2'; companyId = 'B' }
+                )
+            }
+            { Resolve-UKGProEmployeeIdByEmail -EmailAddress 'dup@x.com' } |
+                Should -Throw "*Multiple employees (2)*dup@x.com*disambiguate*"
+        }
+    }
+}
+
+Describe 'Get-UKGProEmploymentDetails -EmailAddress' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
+                -CustomerApiKey 'CUSTKEY123' -UserApiKey 'USRKEY456'
+            $script:calls = New-Object 'System.Collections.Generic.List[hashtable]'
+        }
+
+        It 'resolves the email via person-details, then queries employment-details with the resolved employeeId' {
+            Mock Invoke-RestMethod {
+                $call = @{ Uri = $Uri; Headers = $Headers }
+                $script:calls.Add($call)
+                if ($Uri.AbsoluteUri -match '/personnel/v1/person-details') {
+                    return @([pscustomobject]@{ employeeId = 'EE999'; companyId = 'ACME' })
+                }
+                return @()  # employment-details: no records is fine, we only assert on the request
+            }
+
+            Get-UKGProEmploymentDetails -EmailAddress 'alex.doe@example.com' | Out-Null
+
+            $script:calls.Count | Should -BeGreaterOrEqual 2
+            $script:calls[0].Uri.AbsoluteUri | Should -Match '/personnel/v1/person-details\?.*emailAddress=alex\.doe%40example\.com'
+            $script:calls[1].Uri.AbsoluteUri | Should -Match '/personnel/v1/employment-details\?.*employeeId=EE999'
+            # Both calls carry the same auth headers.
+            $script:calls[0].Headers['x-api-key'] | Should -Be 'USRKEY456'
+            $script:calls[1].Headers['x-api-key'] | Should -Be 'USRKEY456'
+        }
+
+        It 'throws when both -EmailAddress and -EmployeeId are provided (no HTTP call made)' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            { Get-UKGProEmploymentDetails -EmailAddress 'a@x.com' -EmployeeId 'EE1' } |
+                Should -Throw "*cannot be used together*"
+
+            $script:calls.Count | Should -Be 0
+        }
+    }
+}

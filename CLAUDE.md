@@ -43,6 +43,15 @@ NOT yet built: everything else (see Roadmap).
 - Session is stored module-private in `$script:UKGProSession`. Never global.
 - Keep comment-based help (`.SYNOPSIS`/`.EXAMPLE`) on every public cmdlet —
   the Gallery surfaces it and the owner prefers example-driven docs.
+- **Every `Get-` cmdlet must be reachable with a View-only UKG service
+  account.** When a `Get-` cmdlet needs to translate one identifier into
+  another (e.g. email → employeeId for `Get-UKGProEmploymentDetails
+  -EmailAddress`), always resolve via a `GET` endpoint such as
+  `/person-details` or `/employee-demographic-details`. **Never** use
+  `POST /personnel/v1/employee-ids` for a resolver — UKG's platform RBAC
+  requires the "Add" role for any POST, which would force customers to
+  provision a write-capable service account for a read cmdlet. Reserve
+  POST/PATCH for actual write cmdlets (`New-`, `Set-`).
 
 ## Auth model (important — verified against the official spec)
 
