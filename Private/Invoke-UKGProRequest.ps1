@@ -10,9 +10,9 @@ function Invoke-UKGProRequest {
         Responsibilities:
           - Verify there is an active session (Connect-UKGPro was called).
           - Attach the three required auth headers:
-              Authorization: Basic <base64 user:pass>
-              US-CUSTOMER-API-KEY: <customer api key>
-              US-CLIENT-ID:        <primary company code>
+              Authorization:       Basic <base64 user:pass>
+              US-Customer-API-Key: <customer api key>
+              x-api-key:           <user api key>
           - Follow page/per_Page pagination automatically, aggregating results,
             with an optional -MaxResults cap.
 
@@ -56,8 +56,8 @@ function Invoke-UKGProRequest {
     # --- 2. Build auth headers ------------------------------------------------
     $headers = @{
         Authorization         = "Basic $($script:UKGProSession.BasicToken)"
-        'US-CUSTOMER-API-KEY' = $script:UKGProSession.CustomerApiKey
-        'US-CLIENT-ID'        = $script:UKGProSession.ClientId
+        'US-Customer-API-Key' = $script:UKGProSession.CustomerApiKey
+        'x-api-key'           = $script:UKGProSession.UserApiKey
         Accept                = 'application/json'
     }
 

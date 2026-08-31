@@ -25,9 +25,9 @@ UKG Pro core REST APIs need **three** things on every request:
 
 | Piece | What it is | Where to find it |
 |---|---|---|
-| Basic auth | Service-account username/password | Your UKG Pro web service account |
-| `US-CUSTOMER-API-KEY` | Tenant Customer API Key | System Configuration → Security → Web Services |
-| `US-CLIENT-ID` | Primary Company Code | System Configuration → Company Setup |
+| Basic auth | Web-service-account username/password | Your UKG Pro web service account |
+| `US-Customer-API-Key` | Tenant Customer API Key | System Configuration → Security → Web Services |
+| `x-api-key` | User API Key from the same web service account | Shown next to the account username in Web Services |
 
 The **hostname** is tenant-specific (assigned by UKG — see your Service Endpoint info).
 
@@ -36,7 +36,7 @@ $cred = Get-Credential   # service-account username / password
 Connect-UKGPro -Hostname 'service5.ultipro.com' `
                -Credential $cred `
                -CustomerApiKey 'your-customer-api-key' `
-               -ClientId 'YOUR-PRIMARY-COMPANY-CODE'
+               -UserApiKey    'your-user-api-key'
 ```
 
 Credentials are stored in a module-private session and attached automatically; you never pass them on individual calls.

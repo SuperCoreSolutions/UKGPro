@@ -48,11 +48,19 @@ NOT yet built: everything else (see Roadmap).
 
 UKG Pro core REST APIs require THREE things on every request, all attached by
 `Invoke-UKGProRequest`:
-1. `Authorization: Basic <base64 user:pass>` — service-account credential
-2. `US-CUSTOMER-API-KEY` — tenant Customer API Key
-   (System Configuration > Security > Web Services)
-3. `US-CLIENT-ID` — tenant Primary Company Code
-   (System Configuration > Company Setup)
+1. `Authorization: Basic <base64 user:pass>` — web-service-account credential
+   (ASCII-encoded — matches UKG's own examples and equivalent to UTF-8 for any
+   ASCII-only service-account creds, which is the practical universe).
+2. `US-Customer-API-Key` — tenant Customer API Key
+   (System Configuration > Security > Web Services).
+3. `x-api-key` — User API Key from the same web service account
+   (shown next to the account username in Web Services).
+
+**Header set verified empirically 2026-08-03 against a working live PowerShell
+script.** The earlier `US-CLIENT-ID` (Primary Company Code) pattern was pulled
+from a third-party OpenAPI mirror and did NOT match what real Pro tenants
+accept. If you find UKG documentation suggesting `US-CLIENT-ID`, treat it as
+the spec-vs-reality trap called out below and prefer the live-tenant behavior.
 
 Base URL is **tenant-specific** (`{hostname}` in the spec) — `Connect-UKGPro`
 takes `-Hostname`. Onboarding/recruiting APIs use a different auth (Auth Token),
@@ -86,8 +94,10 @@ caps totals; `-PageSize` tunes rows/request.
 2. **Confirm UKG accepts the URL-encoded operator** (`%3E` for `>`) on the date
    filter. Formatting + encoding verified locally; only a live call proves the
    server accepts it.
-3. General: no call has been made against a real tenant yet. First live
-   `Connect-UKGPro` + `Get-UKGProEmploymentDetails` is the real validation.
+3. General: `Get-UKGProEmploymentDetails` has not yet been called against a
+   real tenant. The auth-header set was corrected 2026-08-03 based on a working
+   external script, so the connect path is now trusted; the endpoint response
+   shape and pagination behavior are still untested end-to-end.
 
 ## Roadmap (next work, in rough priority for offboarding/IAM)
 

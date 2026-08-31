@@ -5,11 +5,11 @@ function Connect-UKGPro {
 
     .DESCRIPTION
         UKG Pro core REST APIs authenticate with THREE pieces sent on every call:
-          - Basic auth: a service-account username/password, base64 encoded.
-          - US-CUSTOMER-API-KEY: your tenant's Customer API Key
+          - Basic auth: a web-service-account username/password, base64 encoded.
+          - US-Customer-API-Key: your tenant's Customer API Key
             (System Configuration > Security > Web Services > Customer API Key).
-          - US-CLIENT-ID: your tenant's Primary Company Code
-            (System Configuration > Company Setup > Primary Company Code).
+          - x-api-key: the User API Key generated for the same web service account
+            (shown alongside the account username in Web Services).
 
         The base URL (hostname) is tenant-specific and assigned by UKG; find it
         under your Service Endpoint information (see
@@ -24,14 +24,14 @@ function Connect-UKGPro {
         'servicet.ultipro.com', 'https://service5.ultipro.com'.
 
     .PARAMETER Credential
-        A PSCredential for the UKG Pro service account (UserName = username,
+        A PSCredential for the UKG Pro web service account (UserName = username,
         Password = password).
 
     .PARAMETER CustomerApiKey
-        Your tenant's Customer API Key.
+        Your tenant's Customer API Key (sent as US-Customer-API-Key).
 
-    .PARAMETER ClientId
-        Your tenant's Primary Company Code (sent as US-CLIENT-ID).
+    .PARAMETER UserApiKey
+        The User API Key from the web service account (sent as x-api-key).
 
     .PARAMETER PassThru
         Return the session object (secrets redacted) instead of nothing.
@@ -41,11 +41,11 @@ function Connect-UKGPro {
         Connect-UKGPro -Hostname 'service5.ultipro.com' `
                        -Credential $cred `
                        -CustomerApiKey 'abc123...' `
-                       -ClientId 'ACME'
+                       -UserApiKey 'def456...'
 
     .EXAMPLE
         Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
-                       -CustomerApiKey $key -ClientId 'ACME' -PassThru
+                       -CustomerApiKey $custKey -UserApiKey $userKey -PassThru
     #>
     [CmdletBinding()]
     [OutputType([void], [pscustomobject])]
@@ -62,7 +62,7 @@ function Connect-UKGPro {
         [string]$CustomerApiKey,
 
         [Parameter(Mandatory)]
-        [string]$ClientId,
+        [string]$UserApiKey,
 
         [switch]$PassThru
     )
@@ -74,10 +74,13 @@ function Connect-UKGPro {
     $baseUrl = "https://$h"
 
     # Pre-compute the Basic token once; store that rather than the raw password.
+    # ASCII matches what UKG's own examples use; service-account credentials
+    # are ASCII in practice, so this is equivalent to UTF-8 for any real input
+    # and avoids surprises if a byte-for-byte comparison ever comes up.
     $user = $Credential.UserName
     $pass = $Credential.GetNetworkCredential().Password
     $pair = "{0}:{1}" -f $user, $pass
-    $basicToken = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($pair))
+    $basicToken = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
 
     # Module-private (script scope) so the token doesn't leak into global state.
     $script:UKGProSession = [pscustomobject]@{
@@ -86,17 +89,17 @@ function Connect-UKGPro {
         Username       = $user
         BasicToken     = $basicToken
         CustomerApiKey = $CustomerApiKey
-        ClientId       = $ClientId
+        UserApiKey     = $UserApiKey
         ConnectedAt    = Get-Date
     }
 
-    Write-Verbose "UKG Pro session established for $baseUrl (client-id $ClientId)."
+    Write-Verbose "UKG Pro session established for $baseUrl (user $user)."
 
     if ($PassThru) {
+        # UserApiKey is a secret and is deliberately omitted here.
         [pscustomobject]@{
             BaseUrl     = $script:UKGProSession.BaseUrl
             Username    = $script:UKGProSession.Username
-            ClientId    = $script:UKGProSession.ClientId
             ConnectedAt = $script:UKGProSession.ConnectedAt
         }
     }

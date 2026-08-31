@@ -62,7 +62,7 @@ Describe 'Connect-UKGPro and request assembly' {
             $sec  = ConvertTo-SecureString 'p@ss:word!' -AsPlainText -Force
             $cred = [System.Management.Automation.PSCredential]::new('svc_account', $sec)
             Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
-                -CustomerApiKey 'CUSTKEY123' -ClientId 'ACME'
+                -CustomerApiKey 'CUSTKEY123' -UserApiKey 'USRKEY456'
 
             $script:captured = $null
             Mock Invoke-RestMethod {
@@ -73,19 +73,20 @@ Describe 'Connect-UKGPro and request assembly' {
             Get-UKGProEmploymentDetails -TerminatedOn ([datetime]'2026-07-01') `
                 -TerminatedOperator GreaterThan | Out-Null
 
-            $script:captured.Headers['US-CUSTOMER-API-KEY'] | Should -Be 'CUSTKEY123'
-            $script:captured.Headers['US-CLIENT-ID']        | Should -Be 'ACME'
+            $script:captured.Headers['US-Customer-API-Key'] | Should -Be 'CUSTKEY123'
+            $script:captured.Headers['x-api-key']           | Should -Be 'USRKEY456'
             $script:captured.Headers['Authorization']       | Should -Match '^Basic '
-            # URL-encoded '>' is %3E
-            $script:captured.Uri | Should -Match 'dateOfTermination=%3E07-01-2026'
+            # Pester binds $Uri as [System.Uri]; ToString() shows the decoded form,
+            # AbsoluteUri preserves the actual wire encoding (>  -> %3E).
+            $script:captured.Uri.AbsoluteUri | Should -Match 'dateOfTermination=%3E07-01-2026'
         }
 
         It 'round-trips a password containing a colon in the Basic token' {
             $sec  = ConvertTo-SecureString 'p@ss:word!' -AsPlainText -Force
             $cred = [System.Management.Automation.PSCredential]::new('svc_account', $sec)
-            Connect-UKGPro -Hostname 'h' -Credential $cred -CustomerApiKey 'k' -ClientId 'c'
+            Connect-UKGPro -Hostname 'h' -Credential $cred -CustomerApiKey 'k' -UserApiKey 'u'
 
-            $decoded = [Text.Encoding]::UTF8.GetString(
+            $decoded = [Text.Encoding]::ASCII.GetString(
                 [Convert]::FromBase64String($script:UKGProSession.BasicToken))
             $decoded | Should -Be 'svc_account:p@ss:word!'
         }
