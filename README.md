@@ -48,10 +48,13 @@ Credentials are stored in a module-private session and attached automatically; y
 | `Connect-UKGPro` | Open a session (Basic + two API-key headers) |
 | `Disconnect-UKGPro` | Clear the session |
 | `Get-UKGProEmploymentDetails` | Retrieve employment records, with filters |
+| `Get-UKGProPersonDetails` | Retrieve person records (name / contact / address), by ID or email |
 
 ## Examples
 
 ```powershell
+# --- Employment details ---
+
 # One employee, by ID
 Get-UKGProEmploymentDetails -EmployeeId '000123'
 
@@ -67,6 +70,16 @@ Get-UKGProEmploymentDetails -TerminatedBetweenStart '2026-01-01' -TerminatedBetw
 
 # Incremental sync: records changed in the last day
 Get-UKGProEmploymentDetails -ChangedSince (Get-Date).AddHours(-24)
+
+# --- Person details ---
+
+# One person, by ID or by email — both hit /person-details directly (no
+# extra resolver call; emailAddress is a native filter on this endpoint).
+Get-UKGProPersonDetails -EmployeeId '000123'
+Get-UKGProPersonDetails -EmailAddress 'alex.doe@example.com'
+
+# Incremental sync of person records (name/address/contact changes)
+Get-UKGProPersonDetails -ChangedSince (Get-Date).AddHours(-24)
 ```
 
 ## Date filters

@@ -16,6 +16,7 @@
         'Connect-UKGPro'
         'Disconnect-UKGPro'
         'Get-UKGProEmploymentDetails'
+        'Get-UKGProPersonDetails'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

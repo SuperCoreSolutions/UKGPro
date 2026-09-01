@@ -14,7 +14,7 @@ BeforeAll {
 
 Describe 'Module surface' {
     It 'exports the expected public functions' {
-        $expected = @('Connect-UKGPro', 'Disconnect-UKGPro', 'Get-UKGProEmploymentDetails')
+        $expected = @('Connect-UKGPro', 'Disconnect-UKGPro', 'Get-UKGProEmploymentDetails', 'Get-UKGProPersonDetails')
         (Get-Command -Module UKGPro).Name | Sort-Object | Should -Be ($expected | Sort-Object)
     }
 
@@ -166,6 +166,69 @@ Describe 'Get-UKGProEmploymentDetails -EmailAddress' {
             }
 
             { Get-UKGProEmploymentDetails -EmailAddress 'a@x.com' -EmployeeId 'EE1' } |
+                Should -Throw "*cannot be used together*"
+
+            $script:calls.Count | Should -Be 0
+        }
+    }
+}
+
+Describe 'Get-UKGProPersonDetails' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
+                -CustomerApiKey 'CUSTKEY123' -UserApiKey 'USRKEY456'
+            $script:calls = New-Object 'System.Collections.Generic.List[hashtable]'
+        }
+
+        It '-EmployeeId hits /person-details with employeeId in the query and auth headers' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri; Headers = $Headers })
+                @()
+            }
+
+            Get-UKGProPersonDetails -EmployeeId 'EE123' | Out-Null
+
+            $script:calls.Count               | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri  | Should -Match '/personnel/v1/person-details\?.*employeeId=EE123'
+            $script:calls[0].Headers['x-api-key'] | Should -Be 'USRKEY456'
+        }
+
+        It '-EmailAddress passes the email as a native filter in a single call (no resolver hop)' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri; Headers = $Headers })
+                @()
+            }
+
+            Get-UKGProPersonDetails -EmailAddress 'alex.doe@example.com' | Out-Null
+
+            $script:calls.Count               | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri  | Should -Match '/personnel/v1/person-details\?.*emailAddress=alex\.doe%40example\.com'
+            $script:calls[0].Headers['x-api-key'] | Should -Be 'USRKEY456'
+        }
+
+        It '-ChangedSince adds the operator-prefixed dateTimeChanged filter' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProPersonDetails -ChangedSince ([datetime]'2026-07-01') | Out-Null
+
+            $script:calls.Count              | Should -Be 1
+            # URL-encoded '>' is %3E; format is MM-DD-YYYY.
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'dateTimeChanged=%3E07-01-2026'
+        }
+
+        It 'throws when both -EmailAddress and -EmployeeId are provided (no HTTP call made)' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            { Get-UKGProPersonDetails -EmailAddress 'a@x.com' -EmployeeId 'EE1' } |
                 Should -Throw "*cannot be used together*"
 
             $script:calls.Count | Should -Be 0

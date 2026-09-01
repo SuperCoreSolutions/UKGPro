@@ -24,9 +24,12 @@ PowerShell 7.4.6. Deliberately minimal first pass: prove the auth + pagination
 
 Built and working:
 - `Connect-UKGPro` / `Disconnect-UKGPro`
-- `Get-UKGProEmploymentDetails`
+- `Get-UKGProEmploymentDetails` (supports `-EmployeeId` or `-EmailAddress`;
+  the latter resolves via `person-details` under the hood)
+- `Get-UKGProPersonDetails` (supports `-EmployeeId` or `-EmailAddress`;
+  both are native filters on this endpoint, no resolver hop)
 - Private: `Invoke-UKGProRequest`, `ConvertTo-UKGProDateFilter`,
-  `Get-UKGProErrorMessage`
+  `Get-UKGProErrorMessage`, `Resolve-UKGProEmployeeIdByEmail`
 - Pester tests in `Tests/` (HTTP mocked; no live tenant needed)
 
 NOT yet built: everything else (see Roadmap).
@@ -103,21 +106,22 @@ caps totals; `-PageSize` tunes rows/request.
 2. **Confirm UKG accepts the URL-encoded operator** (`%3E` for `>`) on the date
    filter. Formatting + encoding verified locally; only a live call proves the
    server accepts it.
-3. General: `Get-UKGProEmploymentDetails` has not yet been called against a
-   real tenant. The auth-header set was corrected 2026-08-03 based on a working
-   external script, so the connect path is now trusted; the endpoint response
-   shape and pagination behavior are still untested end-to-end.
+3. General: `Get-UKGProEmploymentDetails -EmployeeId` and `-EmailAddress`
+   verified live 2026-08-31. `Get-UKGProPersonDetails` shipped 2026-09-01;
+   live end-to-end verification pending.
 
 ## Roadmap (next work, in rough priority for offboarding/IAM)
 
 Add these `Get-` cmdlets (endpoints exist in the official "Pro Employee Data"
 spec, `personnel/v1`):
+- ~~`person-details` — name/contact~~ (shipped 2026-09-01 as `Get-UKGProPersonDetails`)
 - `employee-demographic-details` — core identity
-- `person-details` — name/contact
 - `employee-supervisor-details` — reporting chain (offboarding routing)
 - `employee-job-history-details` — job/status changes
 - `integration/kronos/employee-status` — purpose-built status endpoint
-- `employee-ids` (POST) — ID lookup/cross-reference
+- ~~`employee-ids` (POST) — ID lookup/cross-reference~~ (deliberately skipped;
+  POST requires the "Add" role at the UKG RBAC layer even though functionally
+  read — violates the View-only-Get- design principle above)
 
 Later: write operations where the API supports them. Then PSGallery publish
 (after live-tenant validation + a `PSScriptAnalyzer` pass).
