@@ -238,6 +238,65 @@ Describe 'Get-UKGProPersonDetails' {
 
             $script:calls.Count | Should -Be 0
         }
+
+        It 'default call redacts PII fields, keeps whitelisted work-safe fields' {
+            Mock Invoke-RestMethod {
+                @([pscustomobject]@{
+                    employeeId   = 'EE1'
+                    companyId    = 'ACME'
+                    firstName    = 'Alex'
+                    lastName     = 'Doe'
+                    emailAddress = 'alex.doe@example.com'
+                    ssn          = '123-45-6789'
+                    dateOfBirth  = '1990-01-01'
+                    addressLine1 = '123 Fake St'
+                    homePhone    = '555-1212'
+                    gender       = 'F'
+                })
+            }
+
+            $r = Get-UKGProPersonDetails -EmployeeId 'EE1'
+
+            # Work-safe fields present
+            $r.employeeId   | Should -Be 'EE1'
+            $r.firstName    | Should -Be 'Alex'
+            $r.emailAddress | Should -Be 'alex.doe@example.com'
+
+            # PII fields stripped — Select-Object -Property adds NoteProperties
+            # for the whitelisted set only, so anything not on the list won't
+            # be a property on the returned object.
+            $r.PSObject.Properties.Name -contains 'ssn'          | Should -BeFalse
+            $r.PSObject.Properties.Name -contains 'dateOfBirth'  | Should -BeFalse
+            $r.PSObject.Properties.Name -contains 'addressLine1' | Should -BeFalse
+            $r.PSObject.Properties.Name -contains 'homePhone'    | Should -BeFalse
+            $r.PSObject.Properties.Name -contains 'gender'       | Should -BeFalse
+        }
+
+        It '-IncludePII -Force returns the full record with no prompt' {
+            Mock Invoke-RestMethod {
+                @([pscustomobject]@{
+                    employeeId   = 'EE1'
+                    firstName    = 'Alex'
+                    ssn          = '123-45-6789'
+                    dateOfBirth  = '1990-01-01'
+                    addressLine1 = '123 Fake St'
+                })
+            }
+
+            $r = Get-UKGProPersonDetails -EmployeeId 'EE1' -IncludePII -Force
+
+            $r.ssn          | Should -Be '123-45-6789'
+            $r.dateOfBirth  | Should -Be '1990-01-01'
+            $r.addressLine1 | Should -Be '123 Fake St'
+            # And still keeps the work-safe fields.
+            $r.firstName    | Should -Be 'Alex'
+        }
+
+        # NOTE: the -IncludePII (no -Force) prompt path uses PSCmdlet.ShouldContinue()
+        # and does not test reliably under Pester (the non-interactive Pester host
+        # interacts oddly with the interactive prompt machinery). This is a standard
+        # PowerShell mechanism; the two tests above cover the redaction and bypass
+        # paths that are module-specific. Prompt behavior is manually verified.
     }
 }
 

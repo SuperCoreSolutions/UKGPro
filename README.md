@@ -120,6 +120,8 @@ Wraps `GET /personnel/v1/employment-details`. All filters are optional and appli
 
 Wraps `GET /personnel/v1/person-details`. Unlike employment-details, `emailAddress` is a native filter on this endpoint — both `-EmployeeId` and `-EmailAddress` translate directly into single server-side requests with no resolver hop.
 
+**Privacy defaults (secure-by-default):** the raw API response contains substantial PII (SSN, `dateOfBirth`, full home address, national IDs, protected-class demographics, COBRA status, I-9 documents, health data). By default this cmdlet strips everything except a whitelisted set of identity + work-safe fields (`personId`, `employeeId`, `companyId`, `userName`, first/middle/last name, `preferredName`, `namePrefixCode`, `nameSufixCode`, `emailAddress`, `datetimeCreated`, `datetimeChanged`, `integrationRecordId`). Pass `-IncludePII` to opt in to the full response — an interactive session will prompt for confirmation; pass `-Force` to skip the prompt in scripts. The full response is always fetched from UKG; the whitelist is applied client-side to prevent accidental disclosure through logs, exports, or `Format-List` output.
+
 | Parameter | Type | Description |
 |---|---|---|
 | `-EmployeeId` | `string` | Filter by employee identifier. Mutually exclusive with `-EmailAddress`. |
@@ -129,6 +131,8 @@ Wraps `GET /personnel/v1/person-details`. Unlike employment-details, `emailAddre
 | `-ChangedSince` | `datetime` | Return records whose `dateTimeChanged` is greater than this — for incremental syncs. |
 | `-MaxResults` | `int` | Cap total records across all pages. `0` = no cap. Default: `0`. |
 | `-PageSize` | `int` | Rows per page. Default: `100`. |
+| `-IncludePII` | `switch` | Return the full API response including SSN, DOB, home address, national IDs, and other PII fields. Without this switch only the whitelisted fields listed above are returned. |
+| `-Force` | `switch` | Skip the confirmation prompt that `-IncludePII` normally shows. Use in scripts and scheduled tasks. |
 
 ### Get-UKGProOrgLevel
 
@@ -208,8 +212,13 @@ Get-UKGProEmploymentDetails -ChangedSince (Get-Date).AddHours(-24)
 
 # One person, by ID or by email — both hit /person-details directly (no
 # extra resolver call; emailAddress is a native filter on this endpoint).
+# Secure-by-default: only identity + work-safe fields (no SSN / DOB / address).
 Get-UKGProPersonDetails -EmployeeId '000123'
 Get-UKGProPersonDetails -EmailAddress 'alex.doe@example.com'
+
+# Opt in to full PII (interactive session prompts; -Force skips the prompt).
+Get-UKGProPersonDetails -EmployeeId '000123' -IncludePII -Force |
+    Select-Object employeeId, ssn, dateOfBirth, addressLine1
 
 # Incremental sync of person records (name/address/contact changes)
 Get-UKGProPersonDetails -ChangedSince (Get-Date).AddHours(-24)

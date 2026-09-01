@@ -68,6 +68,22 @@ NOT yet built: everything else (see Roadmap).
   requires the "Add" role for any POST, which would force customers to
   provision a write-capable service account for a read cmdlet. Reserve
   POST/PATCH for actual write cmdlets (`New-`, `Set-`).
+- **Privacy defaults: `Get-` cmdlets that expose hard PII (SSN, DOB,
+  home address, national IDs, protected-class demographics, health
+  data) must default to a whitelisted subset of identity + work-safe
+  fields and gate the full response behind `-IncludePII` + `-Force`.**
+  The `-IncludePII` switch shows a `ShouldContinue` prompt in
+  interactive sessions; `-Force` bypasses the prompt for scripts. The
+  whitelist is applied client-side after `Invoke-UKGProRequest` returns
+  — the full response still crosses the wire (UKG's endpoints don't
+  support server-side field selection), so this is a "prevent
+  accidental disclosure through logs/exports/Format-List" guardrail,
+  not an end-to-end privacy guarantee. New response fields UKG adds
+  later are hidden by default until explicitly added to the whitelist
+  (safe-by-default = whitelist, not blacklist). Reference
+  implementation: `Public/Get-UKGProPersonDetails.ps1`. Cmdlets returning
+  only config / metadata (org-levels, jobs, job-groups, company-details)
+  do NOT need this guard.
 
 ## Auth model (important — verified against the official spec)
 
