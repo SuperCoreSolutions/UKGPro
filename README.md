@@ -60,11 +60,87 @@ Credentials are stored in a module-private session and attached automatically; y
 
 | Cmdlet | Purpose |
 |---|---|
-| `Connect-UKGPro` | Open a session (Basic + two API-key headers) |
-| `Disconnect-UKGPro` | Clear the session |
-| `Get-UKGProEmploymentDetails` | Retrieve employment records, with filters |
-| `Get-UKGProPersonDetails` | Retrieve person records (name / contact / address), by ID or email |
-| `Get-UKGProOrgLevel` | Retrieve org-level configuration rows (level + code → description), unique lookup or filtered list |
+| [`Connect-UKGPro`](#connect-ukgpro) | Open a session (Basic + two API-key headers) |
+| [`Disconnect-UKGPro`](#disconnect-ukgpro) | Clear the session |
+| [`Get-UKGProEmploymentDetails`](#get-ukgproemploymentdetails) | Retrieve employment records, with filters |
+| [`Get-UKGProPersonDetails`](#get-ukgpropersondetails) | Retrieve person records (name / contact / address), by ID or email |
+| [`Get-UKGProOrgLevel`](#get-ukgproorglevel) | Retrieve org-level configuration rows (level + code → description), unique lookup or filtered list |
+
+Every cmdlet also gets full comment-based help — `Get-Help <Cmdlet> -Full` in PowerShell shows synopsis, per-parameter descriptions, and worked examples.
+
+### Connect-UKGPro
+
+Opens an authenticated session and stores credentials in a module-private variable so subsequent `Get-*` cmdlets can reuse them.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `-Hostname` | `string` | yes | Tenant service endpoint host, with or without `https://`. E.g. `service5.ultipro.com`. |
+| `-Credential` | `PSCredential` | yes | Web-service-account username + password. Use `Get-Credential`. |
+| `-CustomerApiKey` | `string` | yes | Tenant Customer API Key (sent as `US-Customer-API-Key`). |
+| `-UserApiKey` | `string` | yes | User API Key from the same web service account (sent as `x-api-key`). |
+| `-PassThru` | `switch` | no | Return a redacted session summary (BaseUrl, Username, ConnectedAt) instead of nothing. Secrets are never included. |
+
+### Disconnect-UKGPro
+
+Clears the module-private session. UKG Pro uses stateless per-request auth, so this only clears local credentials — no server call.
+
+*No parameters.*
+
+### Get-UKGProEmploymentDetails
+
+Wraps `GET /personnel/v1/employment-details`. All filters are optional and applied server-side (except `-EmailAddress`, which is resolved to an ID via `person-details` first, then applied — see the [ID vs email note](#get-ukgproemploymentdetails-notes) below). Results paginate automatically unless `-MaxResults` caps them.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `-CompanyId` | `string` | Filter by company identifier. |
+| `-EmployeeId` | `string` | Filter by employee identifier. Mutually exclusive with `-EmailAddress`. |
+| `-EmailAddress` | `string` | Filter by the employee's UKG-registered email. Resolved via `/person-details` under the hood. Mutually exclusive with `-EmployeeId`. |
+| `-EmployeeNumber` | `string` | Filter by employee number. |
+| `-EmployeeStatusCode` | `string` | Filter by employee status code (tenant-defined, e.g. `A` for active). |
+| `-EmployeeTypeCode` | `string` | Filter by employee type code. |
+| `-SupervisorId` | `string` | Filter by supervisor ID. |
+| `-JobTitle` | `string` | Filter by job title. |
+| `-PrimaryJobCode` | `string` | Filter by primary job code. |
+| `-PrimaryWorkLocationCode` | `string` | Filter by primary work location code. |
+| `-TerminatedOn` | `datetime` | Termination date filter. Pair with `-TerminatedOperator`. |
+| `-TerminatedOperator` | `LessThan` \| `GreaterThan` \| `EqualTo` | Comparison for `-TerminatedOn`. Default: `GreaterThan`. |
+| `-TerminatedBetweenStart` | `datetime` | Inclusive range start (use with `-TerminatedBetweenEnd`). |
+| `-TerminatedBetweenEnd` | `datetime` | Inclusive range end (use with `-TerminatedBetweenStart`). |
+| `-ChangedSince` | `datetime` | Return records whose `dateTimeChanged` is greater than this — for incremental syncs. |
+| `-MaxResults` | `int` | Cap total records across all pages. `0` = no cap. Default: `0`. |
+| `-PageSize` | `int` | Rows per page. Default: `100`. |
+
+<a id="get-ukgproemploymentdetails-notes"></a>
+**Note on `-EmailAddress`:** the employment-details endpoint doesn't accept `emailAddress` as a query parameter, so the module transparently resolves email → `employeeId` via `GET /personnel/v1/person-details` (a View-only lookup), then queries employment-details with the resolved ID. Two HTTP calls, one cmdlet invocation.
+
+### Get-UKGProPersonDetails
+
+Wraps `GET /personnel/v1/person-details`. Unlike employment-details, `emailAddress` is a native filter on this endpoint — both `-EmployeeId` and `-EmailAddress` translate directly into single server-side requests with no resolver hop.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `-EmployeeId` | `string` | Filter by employee identifier. Mutually exclusive with `-EmailAddress`. |
+| `-EmailAddress` | `string` | Filter by email — passed to the endpoint's native `emailAddress` query param. Mutually exclusive with `-EmployeeId`. |
+| `-CompanyId` | `string` | Narrow to one company (multi-company tenants). |
+| `-LastName` | `string` | Filter by last name. The endpoint accepts `*` as a wildcard (e.g. `Smi*` matches `Smith`, `Smiley`). |
+| `-ChangedSince` | `datetime` | Return records whose `dateTimeChanged` is greater than this — for incremental syncs. |
+| `-MaxResults` | `int` | Cap total records across all pages. `0` = no cap. Default: `0`. |
+| `-PageSize` | `int` | Rows per page. Default: `100`. |
+
+### Get-UKGProOrgLevel
+
+Routes automatically between the unique-lookup endpoint (`GET /configuration/v1/org-levels/{level}/{code}`) and the list endpoint (`GET /configuration/v1/org-levels`) based on which parameters are supplied.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `-Level` | `int` | Org level number (typically 1–4). Alone: lists all codes at that level (client-side filtered — see note below). With `-Code`: unique server-side lookup. |
+| `-Code` | `string` | Org code (e.g. `ACCT`). Alone: list filtered by code (may return matches across multiple levels). With `-Level`: unique lookup. |
+| `-LevelDescription` | `string` | Filter list by the level's description name (e.g. `Department`). |
+| `-BudgetGroup` | `string` | Filter list by budget group. |
+| `-ReportingCategory` | `string` | Filter list by reporting category code. |
+| `-IsActive` | `bool` | Filter list by active/inactive status. Serialized to the URL as lowercase (`true` / `false`). |
+
+**Note on `-Level` alone:** the list endpoint has no `level` query parameter, so the module fetches the full list and filters client-side by level. Cheap in practice — org-levels tables are typically small (dozens to a few hundred rows total, and the endpoint doesn't paginate). Composes with server-side filters, e.g. `-Level 2 -IsActive $true` sends `isActive=true` server-side then filters level 2 client-side.
 
 ## Examples
 
