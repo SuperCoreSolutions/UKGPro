@@ -8,7 +8,7 @@
     CompanyName          = 'Super Core Solutions LLC'
     Copyright            = '(c) Super Core Solutions LLC. All rights reserved.'
 
-    Description          = 'PowerShell wrapper for the UKG Pro HCM REST API (Pro Employee Data / personnel v1). Retrieve employment details and related employee data for HR, offboarding, and IAM automation.'
+    Description          = 'General-purpose PowerShell wrapper for the UKG Pro HCM REST API. Provides Get- cmdlets for personnel/v1 (employment records, person details) and configuration/v1 (org-levels, more to come) endpoints with unified authentication, pagination, and date-filter handling.'
 
     PowerShellVersion    = '5.1'
 

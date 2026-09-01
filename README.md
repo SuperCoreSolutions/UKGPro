@@ -1,10 +1,12 @@
 # UKGPro
 
-A PowerShell module for the **UKG Pro HCM** REST API (Pro Employee Data / `personnel/v1`).
+A general-purpose PowerShell module wrapping the **UKG Pro HCM** REST API. Provides typed `Get-` cmdlets for the `personnel/v1` (employment records, person details) and `configuration/v1` (org-levels, more to come) endpoint families, with a shared authentication, pagination, and date-filter layer so callers work with objects and parameters instead of URL strings and query encoding.
 
-Its first focus is retrieving **employment details** — status, job, supervisor, and key dates like termination — for HR, **offboarding**, and IAM automation. It's a companion to the separate [UKGHRSD](../UKGHRSD) module (which covers UKG HR Service Delivery). The two are intentionally separate: different platform, auth, and base URL.
+Common use cases include HR data extracts, employee-record reporting, IAM provisioning/deprovisioning workflows, and one-off lookups from an interactive PowerShell session — but nothing in the module is tied to any single workflow. Any script that needs to read UKG Pro data can use it.
 
-> Status: early scaffold (v0.1.0). `Connect` + one `Get-` cmdlet to prove the auth/pagination pattern; more employee-data cmdlets to follow.
+Companion to the separate [UKGHRSD](../UKGHRSD) module (which covers UKG HR Service Delivery). The two are intentionally separate: different platform, authentication, and base URL.
+
+> Status: early module (v0.1.0). Ships with authentication, session management, and `Get-` cmdlets for employment details, person details, and org-level configuration. More cmdlets in active development.
 
 ## Install
 
@@ -18,6 +20,19 @@ Import-Module ./UKGPro/UKGPro.psd1
 ```
 
 Requires PowerShell 5.1+ or 7+.
+
+## Installing on Windows (Mark-of-the-Web prompts)
+
+When PowerShell modules land on a Windows machine from an internet source (`git pull` over HTTPS, downloaded ZIP, browser download), Windows attaches a hidden "Mark of the Web" (MOTW) marker to each file. Under the default execution policy, that triggers a `[R] Run once` / `[A] Always run` prompt the first time each `.ps1` file is imported — and because this module dot-sources one file per function, that means one prompt per cmdlet on every import.
+
+Strip MOTW after each pull/download before importing:
+
+```powershell
+Get-ChildItem C:\path\to\UKGPro -Recurse | Unblock-File
+Import-Module C:\path\to\UKGPro\UKGPro.psd1 -Force
+```
+
+`Unblock-File` removes only the MOTW alternate data stream — no execution-policy changes, no impact on other modules or system trust. Once the module is published to PowerShell Gallery (see Roadmap), `Install-Module UKGPro` / `Update-Module UKGPro` handles this automatically and no `Unblock-File` step is needed.
 
 ## Authentication
 
@@ -63,7 +78,7 @@ Get-UKGProEmploymentDetails -EmployeeId '000123'
 # the hood and then queries employment-details with the resolved ID.
 Get-UKGProEmploymentDetails -EmailAddress 'alex.doe@example.com'
 
-# Offboarding candidates: terminated in the last 30 days
+# Employees terminated in the last 30 days
 Get-UKGProEmploymentDetails -TerminatedOn (Get-Date).AddDays(-30) -TerminatedOperator GreaterThan
 
 # Terminations in a date range
@@ -84,8 +99,8 @@ Get-UKGProPersonDetails -ChangedSince (Get-Date).AddHours(-24)
 
 # --- Org-level lookups (configuration/v1/org-levels) ---
 
-# Unique lookup (level + code) — e.g. resolve an employee's orgLevel2Code
-# into a human-readable department name for AD-sync workflows
+# Unique lookup (level + code) — translate a code from an employment
+# record (e.g. an employee's orgLevel2Code) into the human-readable name
 (Get-UKGProOrgLevel -Level 2 -Code 'ACCT').description
 
 # All codes at a specific level (client-side filtered — list endpoint
@@ -114,7 +129,7 @@ Tests mock the HTTP layer — no network or live tenant required.
 
 ## Roadmap
 
-Additional read cmdlets aligned to offboarding/IAM: employee demographics, person details, supervisor details, job history, and employee status. Write operations later where the API supports them.
+Additional read cmdlets across the `personnel/v1` and `configuration/v1` endpoint families: employee demographics, supervisor details, job history, employee status, jobs, locations, positions, company details, and more. Write cmdlets later where the API supports them and where they can be exposed cleanly. First-class PowerShell Gallery release once the read surface is broad enough to be useful out-of-the-box.
 
 ## License
 
