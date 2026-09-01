@@ -65,6 +65,9 @@ Credentials are stored in a module-private session and attached automatically; y
 | [`Get-UKGProEmploymentDetails`](#get-ukgproemploymentdetails) | Retrieve employment records, with filters |
 | [`Get-UKGProPersonDetails`](#get-ukgpropersondetails) | Retrieve person records (name / contact / address), by ID or email |
 | [`Get-UKGProOrgLevel`](#get-ukgproorglevel) | Retrieve org-level configuration rows (level + code → description), unique lookup or filtered list |
+| [`Get-UKGProJobGroup`](#get-ukgprojobgroup) | Retrieve job-group configuration rows (jobGroupCode → description) |
+| [`Get-UKGProJob`](#get-ukgprojob) | Retrieve job configuration rows (via v2 endpoints), unique lookup or filtered list |
+| [`Get-UKGProCompanyDetails`](#get-ukgprocompanydetails) | Retrieve company records (name, address, tax ID, org-level codes) for master and component companies |
 
 Every cmdlet also gets full comment-based help — `Get-Help <Cmdlet> -Full` in PowerShell shows synopsis, per-parameter descriptions, and worked examples.
 
@@ -142,6 +145,44 @@ Routes automatically between the unique-lookup endpoint (`GET /configuration/v1/
 
 **Note on `-Level` alone:** the list endpoint has no `level` query parameter, so the module fetches the full list and filters client-side by level. Cheap in practice — org-levels tables are typically small (dozens to a few hundred rows total, and the endpoint doesn't paginate). Composes with server-side filters, e.g. `-Level 2 -IsActive $true` sends `isActive=true` server-side then filters level 2 client-side.
 
+### Get-UKGProJobGroup
+
+Wraps `GET /configuration/v1/jobgroup`. Resolves `jobGroupCode` values from employment records into descriptions, or lists job groups filtered by country.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `-JobGroupCode` | `string` | Filter by a specific job group code (e.g. `MGMT`). |
+| `-CountryCode` | `string` | Filter by country. Maps to the endpoint's `jobGroupCountryCode` query parameter. |
+| `-MaxResults` | `int` | Cap total records across all pages. `0` = no cap. Default: `0`. |
+| `-PageSize` | `int` | Rows per page. Default: `100`. |
+
+### Get-UKGProJob
+
+Routes between `GET /configuration/v2/jobs` (list) and `GET /configuration/v2/jobs/{code}` (unique lookup). Uses v2 — UKG marks v1 as deprecated and v2 has more capability (jobCode as a query filter, pagination, richer response including `longDescription`, `jobGroup`, `flsaTypeCode`, `jobEE0Category`, `workEnvironmentDesc`).
+
+| Parameter | Type | Description |
+|---|---|---|
+| `-Code` | `string` | Job code (e.g. `SWENG`). Alone: unique-lookup endpoint, returns a single job. Combined with other filters: applied as a `jobCode` filter on the list endpoint. |
+| `-CountryCode` | `string` | Filter list by country code. |
+| `-IsActive` | `bool` | Filter list by active/inactive. Serialized to the URL as lowercase (`true` / `false`). |
+| `-MaxResults` | `int` | Cap total records across all pages. `0` = no cap. Default: `0`. |
+| `-PageSize` | `int` | Rows per page. Default: `100`. |
+
+**Note on Jobs v2 pagination:** UKG's v2 spec uses `per_page` (lowercase 'p') while `Invoke-UKGProRequest` sends `per_Page`. The module's pagination loop still terminates correctly because it detects the last (short) page from the response count, not from the requested page size — so this inconsistency is silently handled.
+
+### Get-UKGProCompanyDetails
+
+Wraps `GET /configuration/v1/company-details`. Returns full company records for master and component companies — useful for multi-company tenants or resolving a `companyId` / `companyCode` from an employment record.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `-CompanyId` | `string` | Filter by 5-character UKG Pro HCM CompanyID. |
+| `-MasterCompanyId` | `string` | Filter by 5-character Master CompanyID. |
+| `-CompanyCode` | `string` | Filter by 5-character Company Code. |
+| `-IsMasterCompany` | `bool` | Filter to master companies only (or component companies only if `$false`). Serialized to the URL as lowercase. |
+| `-MaxResults` | `int` | Cap total records across all pages. `0` = no cap. Default: `0`. |
+| `-PageSize` | `int` | Rows per page. Default: `100`. |
+
 ## Examples
 
 ```powershell
@@ -185,6 +226,33 @@ Get-UKGProOrgLevel -Level 2
 
 # All active org-levels across every level (server-side filter)
 Get-UKGProOrgLevel -IsActive $true
+
+# --- Job groups (configuration/v1/jobgroup) ---
+
+# Resolve a jobGroupCode from an employment record into a description
+(Get-UKGProJobGroup -JobGroupCode 'MGMT').jobGroupCodeDescription
+
+# All job groups in a specific country
+Get-UKGProJobGroup -CountryCode 'US'
+
+# --- Jobs (configuration/v2/jobs) ---
+
+# Unique lookup — full job configuration by code
+Get-UKGProJob -Code 'SWENG'
+
+# All active US jobs
+Get-UKGProJob -CountryCode 'US' -IsActive $true
+
+# --- Company details (configuration/v1/company-details) ---
+
+# Every company (master and component) in the tenant
+Get-UKGProCompanyDetails
+
+# Resolve a specific companyId (from an employment record) into the full record
+Get-UKGProCompanyDetails -CompanyId 'ACME'
+
+# Only master companies
+Get-UKGProCompanyDetails -IsMasterCompany $true
 ```
 
 ## Date filters

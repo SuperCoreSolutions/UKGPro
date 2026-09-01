@@ -14,7 +14,12 @@ BeforeAll {
 
 Describe 'Module surface' {
     It 'exports the expected public functions' {
-        $expected = @('Connect-UKGPro', 'Disconnect-UKGPro', 'Get-UKGProEmploymentDetails', 'Get-UKGProPersonDetails', 'Get-UKGProOrgLevel')
+        $expected = @(
+            'Connect-UKGPro', 'Disconnect-UKGPro',
+            'Get-UKGProEmploymentDetails', 'Get-UKGProPersonDetails',
+            'Get-UKGProOrgLevel',
+            'Get-UKGProJobGroup', 'Get-UKGProJob', 'Get-UKGProCompanyDetails'
+        )
         (Get-Command -Module UKGPro).Name | Sort-Object | Should -Be ($expected | Sort-Object)
     }
 
@@ -324,6 +329,169 @@ Describe 'Get-UKGProOrgLevel' {
             $script:calls[0].Uri.AbsoluteUri | Should -Match 'isActive=true'
             ($r | Measure-Object).Count       | Should -Be 1
             $r.code                           | Should -Be 'ACCT'
+        }
+    }
+}
+
+Describe 'Get-UKGProJobGroup' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
+                -CustomerApiKey 'CUSTKEY123' -UserApiKey 'USRKEY456'
+            $script:calls = New-Object 'System.Collections.Generic.List[hashtable]'
+        }
+
+        It 'no-args hits /configuration/v1/jobgroup with no filter query params' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri; Headers = $Headers })
+                @()
+            }
+
+            Get-UKGProJobGroup | Out-Null
+
+            $script:calls.Count               | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri  | Should -Match '/configuration/v1/jobgroup\?'
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'jobGroupCode='
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'jobGroupCountryCode='
+            $script:calls[0].Headers['x-api-key'] | Should -Be 'USRKEY456'
+        }
+
+        It '-JobGroupCode filters server-side' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProJobGroup -JobGroupCode 'MGMT' | Out-Null
+
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'jobGroupCode=MGMT'
+        }
+
+        It '-CountryCode maps to jobGroupCountryCode query param' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProJobGroup -CountryCode 'US' | Out-Null
+
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'jobGroupCountryCode=US'
+        }
+    }
+}
+
+Describe 'Get-UKGProJob' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
+                -CustomerApiKey 'CUSTKEY123' -UserApiKey 'USRKEY456'
+            $script:calls = New-Object 'System.Collections.Generic.List[hashtable]'
+        }
+
+        It '-Code alone hits the v2 unique-lookup endpoint with no query params' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri; Headers = $Headers })
+                [pscustomobject]@{ jobCode = 'SWENG'; title = 'Software Engineer' }
+            }
+
+            $r = Get-UKGProJob -Code 'SWENG'
+
+            $script:calls.Count               | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri  | Should -Match '/configuration/v2/jobs/SWENG$'
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'page='
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'per_Page='
+            $script:calls[0].Headers['x-api-key'] | Should -Be 'USRKEY456'
+            $r.title | Should -Be 'Software Engineer'
+        }
+
+        It 'no-args hits the v2 list endpoint' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProJob | Out-Null
+
+            $script:calls[0].Uri.AbsoluteUri | Should -Match '/configuration/v2/jobs\?'
+            $script:calls[0].Uri.AbsoluteUri | Should -Not -Match '/configuration/v2/jobs/'
+        }
+
+        It '-CountryCode + -IsActive filters compose server-side (isActive lowercase)' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProJob -CountryCode 'US' -IsActive $true | Out-Null
+
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'countryCode=US'
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'isActive=true'
+        }
+
+        It '-Code combined with a list filter routes to the list endpoint (jobCode query)' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProJob -Code 'SWENG' -IsActive $true | Out-Null
+
+            # Composes as list-endpoint query; not the /jobs/SWENG detail path.
+            $script:calls[0].Uri.AbsoluteUri | Should -Match '/configuration/v2/jobs\?'
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'jobCode=SWENG'
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'isActive=true'
+        }
+    }
+}
+
+Describe 'Get-UKGProCompanyDetails' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
+                -CustomerApiKey 'CUSTKEY123' -UserApiKey 'USRKEY456'
+            $script:calls = New-Object 'System.Collections.Generic.List[hashtable]'
+        }
+
+        It 'no-args hits /configuration/v1/company-details with no filter query params' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri; Headers = $Headers })
+                @()
+            }
+
+            Get-UKGProCompanyDetails | Out-Null
+
+            $script:calls.Count               | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri  | Should -Match '/configuration/v1/company-details\?'
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'companyId='
+            $script:calls[0].Headers['x-api-key'] | Should -Be 'USRKEY456'
+        }
+
+        It '-CompanyId filters server-side' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProCompanyDetails -CompanyId 'ACME' | Out-Null
+
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'companyId=ACME'
+        }
+
+        It '-IsMasterCompany $true is serialized as lowercase' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProCompanyDetails -IsMasterCompany $true | Out-Null
+
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'isMasterCompany=true'
         }
     }
 }

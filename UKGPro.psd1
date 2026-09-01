@@ -18,6 +18,9 @@
         'Get-UKGProEmploymentDetails'
         'Get-UKGProPersonDetails'
         'Get-UKGProOrgLevel'
+        'Get-UKGProJobGroup'
+        'Get-UKGProJob'
+        'Get-UKGProCompanyDetails'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

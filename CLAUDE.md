@@ -32,6 +32,15 @@ Built and working:
   endpoint `/configuration/v1/org-levels/{level}/{code}` and the list
   endpoint `/configuration/v1/org-levels`; `-Level` alone triggers
   client-side filtering since the list endpoint has no level query param)
+- `Get-UKGProJobGroup` (`/configuration/v1/jobgroup` — list only, filters
+  by `-JobGroupCode` and `-CountryCode`)
+- `Get-UKGProJob` (v2 — routes between `/configuration/v2/jobs` and
+  `/configuration/v2/jobs/{code}`; UKG marks v1 as deprecated and v2 has
+  strictly more capability including jobCode filter, pagination, and
+  richer response fields)
+- `Get-UKGProCompanyDetails` (`/configuration/v1/company-details` — list
+  only, filters by `-CompanyId`, `-MasterCompanyId`, `-CompanyCode`,
+  `-IsMasterCompany`)
 - Private: `Invoke-UKGProRequest`, `ConvertTo-UKGProDateFilter`,
   `Get-UKGProErrorMessage`, `Resolve-UKGProEmployeeIdByEmail`
 - Pester tests in `Tests/` (HTTP mocked; no live tenant needed)
@@ -114,7 +123,9 @@ caps totals; `-PageSize` tunes rows/request.
    verified live 2026-08-31. `Get-UKGProPersonDetails` shipped 2026-09-01;
    live end-to-end verification pending. `Get-UKGProOrgLevel` shipped
    2026-09-01 (module's first `configuration/v1/` endpoint); live
-   end-to-end verification pending.
+   end-to-end verification pending. `Get-UKGProJobGroup`, `Get-UKGProJob`
+   (v2), and `Get-UKGProCompanyDetails` shipped 2026-09-01; live
+   verification pending.
 
 ## Roadmap (next work, in rough priority for offboarding/IAM)
 
