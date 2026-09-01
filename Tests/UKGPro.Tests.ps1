@@ -14,7 +14,7 @@ BeforeAll {
 
 Describe 'Module surface' {
     It 'exports the expected public functions' {
-        $expected = @('Connect-UKGPro', 'Disconnect-UKGPro', 'Get-UKGProEmploymentDetails', 'Get-UKGProPersonDetails')
+        $expected = @('Connect-UKGPro', 'Disconnect-UKGPro', 'Get-UKGProEmploymentDetails', 'Get-UKGProPersonDetails', 'Get-UKGProOrgLevel')
         (Get-Command -Module UKGPro).Name | Sort-Object | Should -Be ($expected | Sort-Object)
     }
 
@@ -232,6 +232,98 @@ Describe 'Get-UKGProPersonDetails' {
                 Should -Throw "*cannot be used together*"
 
             $script:calls.Count | Should -Be 0
+        }
+    }
+}
+
+Describe 'Get-UKGProOrgLevel' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
+                -CustomerApiKey 'CUSTKEY123' -UserApiKey 'USRKEY456'
+            $script:calls = New-Object 'System.Collections.Generic.List[hashtable]'
+        }
+
+        It '-Level + -Code hits the unique-lookup endpoint with no query params' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri; Headers = $Headers })
+                [pscustomobject]@{ level = 2; code = 'ACCT'; description = 'Accounting' }
+            }
+
+            $r = Get-UKGProOrgLevel -Level 2 -Code 'ACCT'
+
+            $script:calls.Count               | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri  | Should -Match '/configuration/v1/org-levels/2/ACCT$'
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'page='
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'per_Page='
+            $script:calls[0].Headers['x-api-key'] | Should -Be 'USRKEY456'
+            $r.description                    | Should -Be 'Accounting'
+        }
+
+        It '-Code alone hits the list endpoint with code as a query filter' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProOrgLevel -Code 'ACCT' | Out-Null
+
+            $script:calls.Count              | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri | Should -Match '/configuration/v1/org-levels\?.*code=ACCT'
+            $script:calls[0].Uri.AbsoluteUri | Should -Not -Match '/org-levels/\d'
+        }
+
+        It '-IsActive $true is serialized as lowercase in the URL' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProOrgLevel -IsActive $true | Out-Null
+
+            $script:calls.Count              | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'isActive=true'
+        }
+
+        It '-Level alone lists everything and filters to that level client-side' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @(
+                    [pscustomobject]@{ level = 1; code = 'CO1';   description = 'Company 1' }
+                    [pscustomobject]@{ level = 2; code = 'ACCT';  description = 'Accounting' }
+                    [pscustomobject]@{ level = 2; code = 'SALES'; description = 'Sales' }
+                    [pscustomobject]@{ level = 3; code = 'X';     description = 'X sub' }
+                )
+            }
+
+            $r = Get-UKGProOrgLevel -Level 2
+
+            $script:calls.Count              | Should -Be 1
+            # Hits list endpoint (no /2 in path, no level= query)
+            $script:calls[0].Uri.AbsoluteUri | Should -Match '/configuration/v1/org-levels$'
+            $script:calls[0].Uri.AbsoluteUri | Should -Not -Match 'level='
+            # Client-side filter keeps only level 2 rows
+            ($r | Measure-Object).Count       | Should -Be 2
+            ($r | ForEach-Object code)        | Should -Be @('ACCT', 'SALES')
+        }
+
+        It '-Level + other list filters composes server-side filter + client-side level filter' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @(
+                    [pscustomobject]@{ level = 2; code = 'ACCT';  description = 'Accounting'; isActive = $true }
+                    [pscustomobject]@{ level = 3; code = 'AR';    description = 'A/R';        isActive = $true }
+                )
+            }
+
+            $r = Get-UKGProOrgLevel -Level 2 -IsActive $true
+
+            $script:calls.Count              | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'isActive=true'
+            ($r | Measure-Object).Count       | Should -Be 1
+            $r.code                           | Should -Be 'ACCT'
         }
     }
 }

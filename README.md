@@ -49,6 +49,7 @@ Credentials are stored in a module-private session and attached automatically; y
 | `Disconnect-UKGPro` | Clear the session |
 | `Get-UKGProEmploymentDetails` | Retrieve employment records, with filters |
 | `Get-UKGProPersonDetails` | Retrieve person records (name / contact / address), by ID or email |
+| `Get-UKGProOrgLevel` | Retrieve org-level configuration rows (level + code → description), unique lookup or filtered list |
 
 ## Examples
 
@@ -80,6 +81,19 @@ Get-UKGProPersonDetails -EmailAddress 'alex.doe@example.com'
 
 # Incremental sync of person records (name/address/contact changes)
 Get-UKGProPersonDetails -ChangedSince (Get-Date).AddHours(-24)
+
+# --- Org-level lookups (configuration/v1/org-levels) ---
+
+# Unique lookup (level + code) — e.g. resolve an employee's orgLevel2Code
+# into a human-readable department name for AD-sync workflows
+(Get-UKGProOrgLevel -Level 2 -Code 'ACCT').description
+
+# All codes at a specific level (client-side filtered — list endpoint
+# doesn't accept a level query filter)
+Get-UKGProOrgLevel -Level 2
+
+# All active org-levels across every level (server-side filter)
+Get-UKGProOrgLevel -IsActive $true
 ```
 
 ## Date filters

@@ -28,6 +28,10 @@ Built and working:
   the latter resolves via `person-details` under the hood)
 - `Get-UKGProPersonDetails` (supports `-EmployeeId` or `-EmailAddress`;
   both are native filters on this endpoint, no resolver hop)
+- `Get-UKGProOrgLevel` (single cmdlet routes between the unique-lookup
+  endpoint `/configuration/v1/org-levels/{level}/{code}` and the list
+  endpoint `/configuration/v1/org-levels`; `-Level` alone triggers
+  client-side filtering since the list endpoint has no level query param)
 - Private: `Invoke-UKGProRequest`, `ConvertTo-UKGProDateFilter`,
   `Get-UKGProErrorMessage`, `Resolve-UKGProEmployeeIdByEmail`
 - Pester tests in `Tests/` (HTTP mocked; no live tenant needed)
@@ -108,7 +112,9 @@ caps totals; `-PageSize` tunes rows/request.
    server accepts it.
 3. General: `Get-UKGProEmploymentDetails -EmployeeId` and `-EmailAddress`
    verified live 2026-08-31. `Get-UKGProPersonDetails` shipped 2026-09-01;
-   live end-to-end verification pending.
+   live end-to-end verification pending. `Get-UKGProOrgLevel` shipped
+   2026-09-01 (module's first `configuration/v1/` endpoint); live
+   end-to-end verification pending.
 
 ## Roadmap (next work, in rough priority for offboarding/IAM)
 
