@@ -28,15 +28,6 @@ Update-Module UKGPro
 
 Requires PowerShell 5.1+ or 7+.
 
-**Working from a local checkout instead** (contributors, custom builds):
-
-```powershell
-git clone https://github.com/SuperCoreSolutions/UKGPro.git
-Import-Module ./UKGPro/UKGPro.psd1
-```
-
-On Windows, files pulled from an internet source carry a Mark-of-the-Web attribute that triggers a `[R] Run once` prompt per `.ps1` on first import — strip it once with `Get-ChildItem C:\path\to\UKGPro -Recurse | Unblock-File`. `Install-Module` / `Update-Module` handle this automatically, so it only applies to the source-checkout path.
-
 ## Authentication
 
 UKG Pro core REST APIs need **three** things on every request:
