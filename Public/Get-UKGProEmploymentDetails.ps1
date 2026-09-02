@@ -12,9 +12,12 @@ function Get-UKGProEmploymentDetails {
         All filters are optional and applied server-side. Results are paginated
         automatically (page/per_Page) unless -MaxResults caps them.
 
-        Date filters use friendly parameters: pass a [datetime] and choose the
-        comparison via the matching *-Operator parameter (default GreaterThan).
-        The module formats UKG's operator-prefixed MM-DD-YYYY syntax for you.
+        Termination date is filtered via one of four intent-named parameters
+        (mutually exclusive, enforced by parameter sets):
+          -TerminatedOn <date>     terminated on that exact date
+          -TerminatedSince <date>  terminated on or after that date
+          -TerminatedBefore <date> terminated on or before that date
+          -TerminatedBetweenStart / -TerminatedBetweenEnd   range
 
     .PARAMETER CompanyId
         Filter by company identifier.
@@ -52,13 +55,17 @@ function Get-UKGProEmploymentDetails {
         Filter by primary work location code.
 
     .PARAMETER TerminatedOn
-        Filter on date of termination. Combine with -TerminatedOperator.
+        Return only records with dateOfTermination equal to this date.
 
-    .PARAMETER TerminatedOperator
-        Comparison for -TerminatedOn: LessThan, GreaterThan (default), EqualTo.
+    .PARAMETER TerminatedSince
+        Return records with dateOfTermination greater than this date — the
+        "terminated in the last N days" pattern.
+
+    .PARAMETER TerminatedBefore
+        Return records with dateOfTermination less than this date.
 
     .PARAMETER TerminatedBetweenStart / -TerminatedBetweenEnd
-        Filter for terminations within an inclusive date range.
+        Return records with dateOfTermination within an inclusive date range.
 
     .PARAMETER ChangedSince
         Return records whose dateTimeChanged is greater than this date/time
@@ -83,9 +90,19 @@ function Get-UKGProEmploymentDetails {
         know the ID up front.
 
     .EXAMPLE
-        Get-UKGProEmploymentDetails -TerminatedOn (Get-Date).AddDays(-30) -TerminatedOperator GreaterThan
+        Get-UKGProEmploymentDetails -TerminatedOn '8/28/26'
+
+        Employees terminated on exactly 2026-08-28.
+
+    .EXAMPLE
+        Get-UKGProEmploymentDetails -TerminatedSince (Get-Date).AddDays(-30)
 
         Employees terminated in the last 30 days (offboarding candidates).
+
+    .EXAMPLE
+        Get-UKGProEmploymentDetails -TerminatedBefore '2026-01-01'
+
+        Employees terminated before the start of 2026.
 
     .EXAMPLE
         Get-UKGProEmploymentDetails -TerminatedBetweenStart '2026-01-01' -TerminatedBetweenEnd '2026-03-31'
@@ -113,15 +130,16 @@ function Get-UKGProEmploymentDetails {
         [Parameter()] [string]$PrimaryJobCode,
         [Parameter()] [string]$PrimaryWorkLocationCode,
 
-        # --- Termination date, single-comparison form ---
-        [Parameter(ParameterSetName = 'Standard')]
+        # --- Termination date: intent-named, mutually exclusive via parameter sets ---
+        [Parameter(Mandatory, ParameterSetName = 'TerminatedOn')]
         [datetime]$TerminatedOn,
 
-        [Parameter(ParameterSetName = 'Standard')]
-        [ValidateSet('LessThan', 'GreaterThan', 'EqualTo')]
-        [string]$TerminatedOperator = 'GreaterThan',
+        [Parameter(Mandatory, ParameterSetName = 'TerminatedSince')]
+        [datetime]$TerminatedSince,
 
-        # --- Termination date, range form ---
+        [Parameter(Mandatory, ParameterSetName = 'TerminatedBefore')]
+        [datetime]$TerminatedBefore,
+
         [Parameter(Mandatory, ParameterSetName = 'TerminatedRange')]
         [datetime]$TerminatedBetweenStart,
 
@@ -158,16 +176,22 @@ function Get-UKGProEmploymentDetails {
     if ($PrimaryJobCode)          { $q['primaryJobCode']          = $PrimaryJobCode }
     if ($PrimaryWorkLocationCode) { $q['primaryWorkLocationCode'] = $PrimaryWorkLocationCode }
 
-    # Termination date filter (operator-prefixed value).
-    if ($PSCmdlet.ParameterSetName -eq 'TerminatedRange') {
-        $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator Between `
-            -RangeStart $TerminatedBetweenStart -RangeEnd $TerminatedBetweenEnd
-    }
-    elseif ($PSBoundParameters.ContainsKey('TerminatedOn')) {
-        $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator $TerminatedOperator -Date $TerminatedOn
+    switch ($PSCmdlet.ParameterSetName) {
+        'TerminatedOn' {
+            $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator EqualTo -Date $TerminatedOn
+        }
+        'TerminatedSince' {
+            $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator GreaterThan -Date $TerminatedSince
+        }
+        'TerminatedBefore' {
+            $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator LessThan -Date $TerminatedBefore
+        }
+        'TerminatedRange' {
+            $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator Between `
+                -RangeStart $TerminatedBetweenStart -RangeEnd $TerminatedBetweenEnd
+        }
     }
 
-    # Incremental sync: dateTimeChanged greater-than.
     if ($PSBoundParameters.ContainsKey('ChangedSince')) {
         $q['dateTimeChanged'] = ConvertTo-UKGProDateFilter -Operator GreaterThan -Date $ChangedSince
     }

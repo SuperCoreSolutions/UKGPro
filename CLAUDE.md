@@ -16,26 +16,39 @@ deprovisioning.
 
 Distribution goal: GitHub source repo + publish to the PowerShell Gallery.
 
-## Current state (v0.2.1)
+## Current state (v0.3.0)
 
-v0.2.1 (2026-09-02): 10 exported cmdlets, zero PSScriptAnalyzer findings under
-the PSGallery ruleset, manifest URIs point at the real repo
-(`SuperCoreSolutions/UKGPro` — LLC-org owned as of 2026-09-02),
-Microsoft.PowerShell.SecretManagement declared as an optional external
-dependency. **Published to PSGallery**:
+v0.3.0 (2026-09-02): 10 exported cmdlets, zero PSScriptAnalyzer findings under
+the PSGallery ruleset, manifest URIs point at `SuperCoreSolutions/UKGPro`
+(LLC-org owned as of 2026-09-02), Microsoft.PowerShell.SecretManagement
+declared as an optional external dependency. **Published to PSGallery**:
 https://www.powershellgallery.com/packages/UKGPro
 
-Delta from v0.2.0 → v0.2.1: `Assert-UKGProSecretManagement` now catches
-three fresh-machine setup failure modes (module missing, no vault
-registered, no default vault) and throws copy-pasteable install /
-`Register-SecretVault` / `Set-SecretVaultDefault` commands instead of
-letting `Set-Secret`'s cryptic "no vault provided and there is no
-default vault designated" error reach the user. Save/Update/Connect
-callers all pass `-VaultName` through so the assertion can give the
-most specific error possible. README `## Authentication` documents the
-full one-time setup (install SecretStore + `Register-SecretVault
--DefaultVault` + optional `Set-SecretStoreConfiguration`). No cmdlet
-signature changes, no breaking changes.
+Delta from v0.2.1 → v0.3.0 (**BREAKING**): `Get-UKGProEmploymentDetails`
+termination-date filter surface redesigned. The old `-TerminatedOn X
+-TerminatedOperator <op>` shape (default `GreaterThan`, which was a
+semantic mismatch with the "On" name) is replaced by four
+intent-named, mutually-exclusive parameters, each with its own natural
+comparison and no operator argument required:
+
+  - `-TerminatedOn <date>`      (=)
+  - `-TerminatedSince <date>`   (>)
+  - `-TerminatedBefore <date>`  (<)
+  - `-TerminatedBetweenStart` / `-TerminatedBetweenEnd`  (range, unchanged)
+
+Mutual exclusion enforced by parameter sets (binder-level, not runtime
+check). `-TerminatedOperator` is gone. `-ChangedSince` is unchanged
+("since" already means `>`). Root cause: user report on 2026-09-02
+that `-TerminatedOn "8/28/26"` returned everyone terminated 8/28
+onward — the old `GreaterThan` default swallowed the equality
+semantics the parameter name promised. Migration line in the manifest
+`ReleaseNotes`.
+
+Delta v0.2.0 → v0.2.1: `Assert-UKGProSecretManagement` catches three
+fresh-machine setup failure modes (module missing, no vault, no
+default vault) and throws copy-pasteable install / register /
+set-default commands instead of surfacing `Set-Secret`'s cryptic "no
+vault provided" error.
 
 Built and working:
 - `Connect-UKGPro` (three parameter sets: `Explicit` — original v0.1.0 flow;

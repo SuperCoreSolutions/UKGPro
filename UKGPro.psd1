@@ -1,6 +1,6 @@
 @{
     RootModule           = 'UKGPro.psm1'
-    ModuleVersion        = '0.2.1'
+    ModuleVersion        = '0.3.0'
     CompatiblePSEditions  = @('Desktop', 'Core')
     GUID                 = 'ce04853e-e752-4d4b-b9a5-3297f933dfd2'
 
@@ -35,33 +35,34 @@
             ProjectUri   = 'https://github.com/SuperCoreSolutions/UKGPro'
             ExternalModuleDependencies = @('Microsoft.PowerShell.SecretManagement')
             ReleaseNotes = @'
-v0.2.1 - Better first-run errors for SecretManagement setup.
+v0.3.0 - Termination-date filter redesign (BREAKING).
 
-Save-UKGProCredential / Update-UKGProCredential / Connect-UKGPro
--FromVault now detect three fresh-machine failure modes up front and
-throw copy-pasteable setup commands instead of surfacing the raw
-"no vault provided and there is no default vault designated" error
-from Set-Secret:
-  1. Microsoft.PowerShell.SecretManagement not installed.
-  2. Module installed but no vault registered (Install-Module
-     SecretStore + Register-SecretVault -DefaultVault).
-  3. Vaults registered but none marked default (Set-SecretVaultDefault
-     or supply -VaultName).
+Get-UKGProEmploymentDetails: -TerminatedOperator is REMOVED. The
+single -TerminatedOn <date> parameter is replaced with three
+intent-named parameters, each with its own natural semantic and no
+operator argument required:
 
-No cmdlet signatures changed. No breaking changes.
+  -TerminatedOn <date>      terminated on that exact date (equality)
+  -TerminatedSince <date>   terminated on/after that date (>)
+  -TerminatedBefore <date>  terminated on/before that date (<)
+  -TerminatedBetweenStart / -TerminatedBetweenEnd    range (unchanged)
 
-v0.2.0 (previous) - Expanded read surface + auth ergonomics + secure
-PII defaults. Cmdlets: Connect-UKGPro (Explicit / -FromVault /
--FromEnvironment), Disconnect-UKGPro, Save-UKGProCredential,
-Update-UKGProCredential (hostname + tenant API keys only --
-username/password are never persisted in the vault by design),
-Get-UKGProEmploymentDetails, Get-UKGProPersonDetails
-(secure-by-default PII redaction, opt in with -IncludePII),
-Get-UKGProOrgLevel, Get-UKGProJobGroup, Get-UKGProJob (v2 endpoints),
-Get-UKGProCompanyDetails. Unified auth (Basic + US-Customer-API-Key +
-x-api-key), automatic page/per_Page pagination, friendly date filters
-for UKG's operator-prefixed date syntax. Every Get- cmdlet works with
-a View-only UKG service account.
+Migration:
+  OLD: -TerminatedOn X -TerminatedOperator GreaterThan  -> -TerminatedSince X
+  OLD: -TerminatedOn X -TerminatedOperator LessThan     -> -TerminatedBefore X
+  OLD: -TerminatedOn X -TerminatedOperator EqualTo      -> -TerminatedOn X (default now)
+  OLD: -TerminatedOn X (no -TerminatedOperator)         -> -TerminatedSince X
+    (old default was GreaterThan; the parameter name promised equality
+     but the behavior returned "after that date" -- root cause of the fix)
+
+The four termination-filter parameters are mutually exclusive via
+parameter sets, so PowerShell now catches "wait, which one did I
+mean?" mistakes at bind time.
+
+v0.2.1 (previous) - Friendlier first-run errors for SecretManagement
+setup: Save/Update-UKGProCredential and Connect-UKGPro -FromVault now
+detect missing module / missing vault / missing default vault up
+front and throw copy-pasteable setup commands.
 '@
         }
     }

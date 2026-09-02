@@ -87,8 +87,7 @@ Describe 'Connect-UKGPro and request assembly' {
                 return @()   # empty => single page
             }
 
-            Get-UKGProEmploymentDetails -TerminatedOn ([datetime]'2026-07-01') `
-                -TerminatedOperator GreaterThan | Out-Null
+            Get-UKGProEmploymentDetails -TerminatedSince ([datetime]'2026-07-01') | Out-Null
 
             $script:captured.Headers['US-Customer-API-Key'] | Should -Be 'CUSTKEY123'
             $script:captured.Headers['x-api-key']           | Should -Be 'USRKEY456'
@@ -142,6 +141,60 @@ Describe 'Resolve-UKGProEmployeeIdByEmail' {
             }
             { Resolve-UKGProEmployeeIdByEmail -EmailAddress 'dup@x.com' } |
                 Should -Throw "*Multiple employees (2)*dup@x.com*disambiguate*"
+        }
+    }
+}
+
+Describe 'Get-UKGProEmploymentDetails termination date filters' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'h' -Credential $cred -CustomerApiKey 'k' -UserApiKey 'u'
+            $script:captured = $null
+            Mock Invoke-RestMethod {
+                $script:captured = @{ Uri = $Uri }
+                @()
+            }
+        }
+
+        It '-TerminatedOn sends equality (no operator prefix)' {
+            Get-UKGProEmploymentDetails -TerminatedOn ([datetime]'2026-08-28') | Out-Null
+            # Equality has no prefix — just MM-DD-YYYY. Must not be encoded > or <.
+            $script:captured.Uri.AbsoluteUri | Should -Match 'dateOfTermination=08-28-2026'
+            $script:captured.Uri.AbsoluteUri | Should -Not -Match 'dateOfTermination=%3E'
+            $script:captured.Uri.AbsoluteUri | Should -Not -Match 'dateOfTermination=%3C'
+        }
+
+        It '-TerminatedSince sends greater-than (%3E prefix)' {
+            Get-UKGProEmploymentDetails -TerminatedSince ([datetime]'2026-07-01') | Out-Null
+            $script:captured.Uri.AbsoluteUri | Should -Match 'dateOfTermination=%3E07-01-2026'
+        }
+
+        It '-TerminatedBefore sends less-than (%3C prefix)' {
+            Get-UKGProEmploymentDetails -TerminatedBefore ([datetime]'2026-01-01') | Out-Null
+            $script:captured.Uri.AbsoluteUri | Should -Match 'dateOfTermination=%3C01-01-2026'
+        }
+
+        It '-TerminatedBetweenStart/-End sends the {start,end} form' {
+            Get-UKGProEmploymentDetails -TerminatedBetweenStart ([datetime]'2026-01-01') `
+                                        -TerminatedBetweenEnd   ([datetime]'2026-03-31') | Out-Null
+            # {,} URL-encode to %7B, %7D; the separator comma encodes to %2C.
+            $script:captured.Uri.AbsoluteUri | Should -Match 'dateOfTermination=%7B01-01-2026%2C03-31-2026%7D'
+        }
+
+        It 'combining two termination filters fails parameter-set resolution' {
+            # PowerShell's parameter binder throws before the function body runs;
+            # exact wording varies across host versions, so match on the well-known
+            # substring "Parameter set cannot be resolved".
+            { Get-UKGProEmploymentDetails -TerminatedOn ([datetime]'2026-08-28') `
+                                          -TerminatedSince ([datetime]'2026-07-01') } |
+                Should -Throw '*Parameter set cannot be resolved*'
+        }
+
+        It '-TerminatedOperator no longer exists on this cmdlet (dropped in 0.3.0)' {
+            (Get-Command Get-UKGProEmploymentDetails).Parameters.Keys |
+                Should -Not -Contain 'TerminatedOperator'
         }
     }
 }

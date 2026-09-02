@@ -210,8 +210,9 @@ Wraps `GET /personnel/v1/employment-details`. All filters are optional and appli
 | `-JobTitle` | `string` | Filter by job title. |
 | `-PrimaryJobCode` | `string` | Filter by primary job code. |
 | `-PrimaryWorkLocationCode` | `string` | Filter by primary work location code. |
-| `-TerminatedOn` | `datetime` | Termination date filter. Pair with `-TerminatedOperator`. |
-| `-TerminatedOperator` | `LessThan` \| `GreaterThan` \| `EqualTo` | Comparison for `-TerminatedOn`. Default: `GreaterThan`. |
+| `-TerminatedOn` | `datetime` | Return records with `dateOfTermination` **equal to** this date. |
+| `-TerminatedSince` | `datetime` | Return records with `dateOfTermination` **greater than** this date (the "last N days" pattern). |
+| `-TerminatedBefore` | `datetime` | Return records with `dateOfTermination` **less than** this date. |
 | `-TerminatedBetweenStart` | `datetime` | Inclusive range start (use with `-TerminatedBetweenEnd`). |
 | `-TerminatedBetweenEnd` | `datetime` | Inclusive range end (use with `-TerminatedBetweenStart`). |
 | `-ChangedSince` | `datetime` | Return records whose `dateTimeChanged` is greater than this — for incremental syncs. |
@@ -304,8 +305,14 @@ Get-UKGProEmploymentDetails -EmployeeId '000123'
 # the hood and then queries employment-details with the resolved ID.
 Get-UKGProEmploymentDetails -EmailAddress 'alex.doe@example.com'
 
-# Employees terminated in the last 30 days
-Get-UKGProEmploymentDetails -TerminatedOn (Get-Date).AddDays(-30) -TerminatedOperator GreaterThan
+# Employees terminated on exactly this date
+Get-UKGProEmploymentDetails -TerminatedOn '8/28/26'
+
+# Employees terminated in the last 30 days (offboarding candidates)
+Get-UKGProEmploymentDetails -TerminatedSince (Get-Date).AddDays(-30)
+
+# Employees terminated before end of Q1 2026
+Get-UKGProEmploymentDetails -TerminatedBefore '2026-04-01'
 
 # Terminations in a date range
 Get-UKGProEmploymentDetails -TerminatedBetweenStart '2026-01-01' -TerminatedBetweenEnd '2026-03-31'
@@ -371,7 +378,7 @@ Get-UKGProCompanyDetails -IsMasterCompany $true
 
 ## Date filters
 
-UKG Pro uses an unusual operator-prefixed date syntax (`dateOfTermination=>01-15-2026`). This module hides that: pass a normal `[datetime]` and pick a comparison via the matching `*-Operator` parameter (or the `*BetweenStart`/`*BetweenEnd` pair for ranges), and the correct `MM-DD-YYYY` operator string is built for you.
+UKG Pro uses an unusual operator-prefixed date syntax (`dateOfTermination=>01-15-2026`). This module hides that: cmdlets expose intent-named parameters (`-TerminatedOn`, `-TerminatedSince`, `-TerminatedBefore`, `-TerminatedBetweenStart/-End`, `-ChangedSince`) that take a normal `[datetime]`, and the correct `MM-DD-YYYY` operator string is built for you.
 
 ## Pagination
 
