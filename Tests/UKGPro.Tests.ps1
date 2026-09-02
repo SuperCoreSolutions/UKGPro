@@ -8,11 +8,18 @@
 #>
 
 # Top-level import so InModuleScope resolves during Pester's discovery phase
-# (Pester 6+ enforces this; Pester 5 tolerated a BeforeAll-only import).
+# (Pester 6+ enforces this; Pester 5 tolerated a BeforeAll-only import). We
+# also evict any already-loaded copies first — a PSGallery-installed UKGPro
+# in the same session (common when someone runs Install-Module for smoke
+# testing) collides with the source import and Pester 6 fails discovery
+# with "Multiple script or manifest modules named 'UKGPro' are currently
+# loaded".
+Get-Module UKGPro -All | Remove-Module -Force -ErrorAction SilentlyContinue
 Import-Module (Join-Path (Split-Path -Parent $PSScriptRoot) 'UKGPro.psd1') -Force
 
 BeforeAll {
     $ModuleRoot = Split-Path -Parent $PSScriptRoot
+    Get-Module UKGPro -All | Remove-Module -Force -ErrorAction SilentlyContinue
     Import-Module (Join-Path $ModuleRoot 'UKGPro.psd1') -Force
 }
 
