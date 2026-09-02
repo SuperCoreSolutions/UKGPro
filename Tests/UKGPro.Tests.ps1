@@ -16,6 +16,7 @@ Describe 'Module surface' {
     It 'exports the expected public functions' {
         $expected = @(
             'Connect-UKGPro', 'Disconnect-UKGPro',
+            'Save-UKGProCredential', 'Update-UKGProCredential',
             'Get-UKGProEmploymentDetails', 'Get-UKGProPersonDetails',
             'Get-UKGProOrgLevel',
             'Get-UKGProJobGroup', 'Get-UKGProJob', 'Get-UKGProCompanyDetails'
@@ -551,6 +552,147 @@ Describe 'Get-UKGProCompanyDetails' {
             Get-UKGProCompanyDetails -IsMasterCompany $true | Out-Null
 
             $script:calls[0].Uri.AbsoluteUri | Should -Match 'isMasterCompany=true'
+        }
+    }
+}
+
+Describe 'Save-UKGProCredential' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $script:setSecretCalls = New-Object 'System.Collections.Generic.List[hashtable]'
+            Mock Assert-UKGProSecretManagement { }
+            Mock Set-Secret {
+                $script:setSecretCalls.Add(@{
+                    Name   = $Name
+                    Secret = $Secret
+                    Vault  = $Vault
+                })
+            }
+        }
+
+        It 'writes three secrets with the expected UKGPro-* names when all three params supplied' {
+            Save-UKGProCredential -Hostname 'service5.ultipro.com' `
+                                  -CustomerApiKey 'CUST123' `
+                                  -UserApiKey 'USER456'
+
+            $script:setSecretCalls.Count | Should -Be 3
+            $names = $script:setSecretCalls | ForEach-Object Name | Sort-Object
+            $names | Should -Be @('UKGPro-CustomerApiKey', 'UKGPro-Hostname', 'UKGPro-UserApiKey')
+        }
+
+        It 'passes -VaultName through to Set-Secret when supplied' {
+            Save-UKGProCredential -Hostname 'h' -CustomerApiKey 'c' -UserApiKey 'u' `
+                                  -VaultName 'UKGPro-Prod'
+
+            $script:setSecretCalls | ForEach-Object { $_.Vault | Should -Be 'UKGPro-Prod' }
+        }
+    }
+}
+
+Describe 'Update-UKGProCredential' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $script:setSecretCalls = New-Object 'System.Collections.Generic.List[hashtable]'
+            Mock Assert-UKGProSecretManagement { }
+            Mock Set-Secret {
+                $script:setSecretCalls.Add(@{ Name = $Name })
+            }
+        }
+
+        It 'passing only -CustomerApiKey writes exactly that one secret' {
+            Update-UKGProCredential -CustomerApiKey 'NEWKEY'
+
+            $script:setSecretCalls.Count      | Should -Be 1
+            $script:setSecretCalls[0].Name    | Should -Be 'UKGPro-CustomerApiKey'
+        }
+
+        It 'passing all three params writes all three secrets' {
+            Update-UKGProCredential -Hostname 'h' -CustomerApiKey 'c' -UserApiKey 'u'
+
+            $script:setSecretCalls.Count | Should -Be 3
+        }
+
+        It 'passing no params throws before touching the vault' {
+            { Update-UKGProCredential } | Should -Throw "*requires at least one*"
+            $script:setSecretCalls.Count | Should -Be 0
+        }
+    }
+}
+
+Describe 'Connect-UKGPro alternative parameter sets' {
+    InModuleScope UKGPro {
+        Context '-FromEnvironment' {
+            BeforeEach {
+                $env:UKGPRO_HOSTNAME         = 'service5.ultipro.com'
+                $env:UKGPRO_USERNAME         = 'svc_env'
+                $env:UKGPRO_PASSWORD         = 'p@ss!'
+                $env:UKGPRO_CUSTOMER_API_KEY = 'CUSTENV'
+                $env:UKGPRO_USER_API_KEY     = 'USERENV'
+                $script:UKGProSession        = $null
+            }
+            AfterEach {
+                Remove-Item Env:UKGPRO_HOSTNAME, Env:UKGPRO_USERNAME, Env:UKGPRO_PASSWORD, `
+                            Env:UKGPRO_CUSTOMER_API_KEY, Env:UKGPRO_USER_API_KEY `
+                            -ErrorAction SilentlyContinue
+            }
+
+            It 'reads five env vars and populates the module-private session' {
+                Connect-UKGPro -FromEnvironment
+
+                $script:UKGProSession                 | Should -Not -BeNullOrEmpty
+                $script:UKGProSession.Hostname        | Should -Be 'service5.ultipro.com'
+                $script:UKGProSession.Username        | Should -Be 'svc_env'
+                $script:UKGProSession.CustomerApiKey  | Should -Be 'CUSTENV'
+                $script:UKGProSession.UserApiKey      | Should -Be 'USERENV'
+                $script:UKGProSession.BasicToken      | Should -Not -BeNullOrEmpty
+            }
+
+            It 'throws with a helpful message listing missing env vars' {
+                Remove-Item Env:UKGPRO_PASSWORD, Env:UKGPRO_USER_API_KEY -ErrorAction SilentlyContinue
+
+                { Connect-UKGPro -FromEnvironment } |
+                    Should -Throw "*UKGPRO_PASSWORD*UKGPRO_USER_API_KEY*"
+            }
+        }
+
+        Context '-FromVault' {
+            BeforeEach {
+                Mock Assert-UKGProSecretManagement { }
+                Mock Get-Secret {
+                    switch ($Name) {
+                        'UKGPro-Hostname'       { 'service5.ultipro.com' }
+                        'UKGPro-CustomerApiKey' { 'CUSTVAULT' }
+                        'UKGPro-UserApiKey'     { 'USERVAULT' }
+                    }
+                }
+                $script:UKGProSession = $null
+                $script:getCredentialCallCount = 0
+                Mock Get-Credential {
+                    $script:getCredentialCallCount++
+                    $sec = ConvertTo-SecureString 'p@ss!' -AsPlainText -Force
+                    [pscredential]::new('svc_vault_prompt', $sec)
+                }
+            }
+
+            It 'reads three vault secrets and uses supplied -Credential without prompting' {
+                $sec  = ConvertTo-SecureString 'p@ss!' -AsPlainText -Force
+                $cred = [pscredential]::new('svc_vault_explicit', $sec)
+
+                Connect-UKGPro -FromVault -Credential $cred
+
+                $script:UKGProSession.Hostname        | Should -Be 'service5.ultipro.com'
+                $script:UKGProSession.CustomerApiKey  | Should -Be 'CUSTVAULT'
+                $script:UKGProSession.UserApiKey      | Should -Be 'USERVAULT'
+                $script:UKGProSession.Username        | Should -Be 'svc_vault_explicit'
+                $script:getCredentialCallCount        | Should -Be 0
+            }
+
+            It 'prompts via Get-Credential when -Credential is omitted' {
+                Connect-UKGPro -FromVault
+
+                $script:UKGProSession.Username | Should -Be 'svc_vault_prompt'
+                $script:getCredentialCallCount | Should -Be 1
+            }
         }
     }
 }

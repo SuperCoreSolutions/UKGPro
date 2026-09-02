@@ -48,6 +48,8 @@ function Get-UKGProCompanyDetails {
 
         List only master companies.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '',
+        Justification = 'Public API name matches the underlying UKG response schema (CompanyDetails). Renaming to singular would break every existing caller and diverge from UKG''s own naming.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (

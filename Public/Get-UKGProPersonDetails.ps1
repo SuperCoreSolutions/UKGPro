@@ -109,6 +109,8 @@ function Get-UKGProPersonDetails {
         Person records changed in the last 24 hours, for an incremental sync
         job. Default (safe) projection.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '',
+        Justification = 'Public API name matches the underlying UKG response schema (EmpPersonDetails). Renaming to singular would break every existing caller and diverge from UKG''s own naming.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (

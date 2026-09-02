@@ -6,7 +6,7 @@ Common use cases include HR data extracts, employee-record reporting, IAM provis
 
 Companion to the separate [UKGHRSD](../UKGHRSD) module (which covers UKG HR Service Delivery). The two are intentionally separate: different platform, authentication, and base URL.
 
-> Status: early module (v0.1.0). Ships with authentication, session management, and `Get-` cmdlets for employment details, person details, and org-level configuration. More cmdlets in active development.
+> Status: v0.2.0. Ten `Get-` and connect cmdlets across the `personnel/v1` and `configuration/v1` endpoint families, secure-by-default PII redaction, optional SecretManagement-backed auth for one-line reconnects. PSGallery publish pending.
 
 ## Install
 
@@ -46,6 +46,10 @@ UKG Pro core REST APIs need **three** things on every request:
 
 The **hostname** is tenant-specific (assigned by UKG — see your Service Endpoint info).
 
+Three ways to connect, pick whichever fits your setup:
+
+### 1. Explicit (default) — pass everything each session
+
 ```powershell
 $cred = Get-Credential   # service-account username / password
 Connect-UKGPro -Hostname 'service5.ultipro.com' `
@@ -54,14 +58,61 @@ Connect-UKGPro -Hostname 'service5.ultipro.com' `
                -UserApiKey    'your-user-api-key'
 ```
 
-Credentials are stored in a module-private session and attached automatically; you never pass them on individual calls.
+### 2. Vault-backed — save the tenant config once, reconnect with one line
+
+Requires the `Microsoft.PowerShell.SecretManagement` module (plus a registered vault such as `SecretStore`). Install once:
+
+```powershell
+Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser
+Install-Module Microsoft.PowerShell.SecretStore        -Scope CurrentUser
+```
+
+Then, one-time setup — writes hostname + both API keys to the default vault:
+
+```powershell
+Save-UKGProCredential -Hostname 'service5.ultipro.com' `
+                      -CustomerApiKey 'your-customer-api-key' `
+                      -UserApiKey    'your-user-api-key'
+```
+
+Every subsequent session:
+
+```powershell
+Connect-UKGPro -FromVault    # prompts for username/password only
+```
+
+**Design note: the vault deliberately does NOT store the web-service-account username or password.** Only the tenant-level API keys and hostname are persisted. The account credential is prompted at connect time (or supplied via `-Credential` if scripting). Rationale: a compromised local vault reveals only tenant config, never the login secret; and operators uncomfortable persisting their credentials on a workstation still get the one-liner reconnect experience for the parts they were fine caching.
+
+Rotate a leaked key without re-entering the others:
+
+```powershell
+Update-UKGProCredential -CustomerApiKey '<new-key>'
+```
+
+### 3. Environment variables — for CI, scheduled tasks, containers
+
+For fully non-interactive scenarios where prompts don't work. The CI system's own secret store (GitHub Actions, Azure Pipelines vars, etc.) is the actual keeper of the values.
+
+```powershell
+$env:UKGPRO_HOSTNAME           = 'service5.ultipro.com'
+$env:UKGPRO_USERNAME           = 'svc_account'
+$env:UKGPRO_PASSWORD           = 'redacted'
+$env:UKGPRO_CUSTOMER_API_KEY   = 'your-customer-api-key'
+$env:UKGPRO_USER_API_KEY       = 'your-user-api-key'
+
+Connect-UKGPro -FromEnvironment
+```
+
+Credentials are stored in a module-private session and attached automatically to every subsequent request; you never pass them on individual `Get-*` calls.
 
 ## Cmdlets
 
 | Cmdlet | Purpose |
 |---|---|
-| [`Connect-UKGPro`](#connect-ukgpro) | Open a session (Basic + two API-key headers) |
+| [`Connect-UKGPro`](#connect-ukgpro) | Open a session (Basic + two API-key headers). Three flows: explicit, `-FromVault`, `-FromEnvironment` |
 | [`Disconnect-UKGPro`](#disconnect-ukgpro) | Clear the session |
+| [`Save-UKGProCredential`](#save-ukgprocredential) | One-time SecretManagement setup — writes hostname + tenant API keys (never username/password) |
+| [`Update-UKGProCredential`](#update-ukgprocredential) | Partial rotation of stored secrets — rotate a leaked API key without re-entering everything |
 | [`Get-UKGProEmploymentDetails`](#get-ukgproemploymentdetails) | Retrieve employment records, with filters |
 | [`Get-UKGProPersonDetails`](#get-ukgpropersondetails) | Retrieve person records (name / contact / address), by ID or email |
 | [`Get-UKGProOrgLevel`](#get-ukgproorglevel) | Retrieve org-level configuration rows (level + code → description), unique lookup or filtered list |
@@ -73,21 +124,66 @@ Every cmdlet also gets full comment-based help — `Get-Help <Cmdlet> -Full` in 
 
 ### Connect-UKGPro
 
-Opens an authenticated session and stores credentials in a module-private variable so subsequent `Get-*` cmdlets can reuse them.
+Opens an authenticated session and stores credentials in a module-private variable so subsequent `Get-*` cmdlets can reuse them. Three parameter sets:
+
+**Explicit set (default):** pass everything as parameters.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `-Hostname` | `string` | yes | Tenant service endpoint host, with or without `https://`. E.g. `service5.ultipro.com`. |
+| `-Hostname` | `string` | yes | Tenant service endpoint host, with or without `https://`. |
 | `-Credential` | `PSCredential` | yes | Web-service-account username + password. Use `Get-Credential`. |
 | `-CustomerApiKey` | `string` | yes | Tenant Customer API Key (sent as `US-Customer-API-Key`). |
 | `-UserApiKey` | `string` | yes | User API Key from the same web service account (sent as `x-api-key`). |
-| `-PassThru` | `switch` | no | Return a redacted session summary (BaseUrl, Username, ConnectedAt) instead of nothing. Secrets are never included. |
+
+**FromVault set:** pull hostname + two API keys from a SecretManagement vault (previously populated with `Save-UKGProCredential`).
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `-FromVault` | `switch` | yes | Selects this parameter set. |
+| `-VaultName` | `string` | no | Specific vault to read from. Omit to use the default vault. |
+| `-Credential` | `PSCredential` | no | Web-service-account credential. Omit to be prompted via `Get-Credential`. |
+
+**FromEnvironment set:** read all five values from env vars, for CI / scheduled tasks / containers.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `-FromEnvironment` | `switch` | yes | Selects this parameter set. Reads `UKGPRO_HOSTNAME`, `UKGPRO_USERNAME`, `UKGPRO_PASSWORD`, `UKGPRO_CUSTOMER_API_KEY`, `UKGPRO_USER_API_KEY`. Throws with a list of missing vars if any are absent. |
+
+Common to all sets:
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `-PassThru` | `switch` | no | Return a redacted session summary (BaseUrl, Username, ConnectedAt). Secrets are never included. |
 
 ### Disconnect-UKGPro
 
 Clears the module-private session. UKG Pro uses stateless per-request auth, so this only clears local credentials — no server call.
 
 *No parameters.*
+
+### Save-UKGProCredential
+
+Writes hostname + tenant API keys to a SecretManagement vault under `UKGPro-Hostname`, `UKGPro-CustomerApiKey`, `UKGPro-UserApiKey`. Overwrites existing values. Requires `Microsoft.PowerShell.SecretManagement`.
+
+**Never stores the web-service-account username or password** — those are always supplied at connect time.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `-Hostname` | `string` | yes | Tenant service endpoint host. |
+| `-CustomerApiKey` | `string` | yes | Tenant Customer API Key. Stored as `SecureString`. |
+| `-UserApiKey` | `string` | yes | User API Key. Stored as `SecureString`. |
+| `-VaultName` | `string` | no | Specific vault to write to. Omit to use the default vault. |
+
+### Update-UKGProCredential
+
+Partial rotation — writes only the secrets whose parameters were supplied; the rest remain untouched. At least one of `-Hostname`, `-CustomerApiKey`, `-UserApiKey` must be supplied (throws otherwise). Supports `-WhatIf` and `-Confirm`.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `-Hostname` | `string` | no | New hostname (e.g. tenant migration). |
+| `-CustomerApiKey` | `string` | no | New Customer API Key (e.g. key rotation). |
+| `-UserApiKey` | `string` | no | New User API Key. |
+| `-VaultName` | `string` | no | Specific vault (should match the vault Save-UKGProCredential wrote to). |
 
 ### Get-UKGProEmploymentDetails
 

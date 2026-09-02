@@ -97,6 +97,8 @@ function Get-UKGProEmploymentDetails {
 
         Records changed in the last day, for an incremental sync.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '',
+        Justification = 'Public API name matches the underlying UKG response schema (EmpEmploymentDetails). Renaming to singular would break every existing caller and diverge from UKG''s own naming.')]
     [CmdletBinding(DefaultParameterSetName = 'Standard')]
     [OutputType([pscustomobject])]
     param (

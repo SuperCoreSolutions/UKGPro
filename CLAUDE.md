@@ -16,14 +16,25 @@ deprovisioning.
 
 Distribution goal: GitHub source repo + publish to the PowerShell Gallery.
 
-## Current state (v0.1.0)
+## Current state (v0.2.0)
 
-Scaffolded, imports clean, manifest valid, core logic unit-tested on
-PowerShell 7.4.6. Deliberately minimal first pass: prove the auth + pagination
-+ date-filter pattern with ONE real endpoint before expanding.
+v0.2.0 (2026-09-02): 10 exported cmdlets, 45 Pester tests passing on PS 7.5.1,
+zero PSScriptAnalyzer findings under the PSGallery ruleset, manifest URIs
+point at the real repo (`dnsuper0695/UKGPro`), Microsoft.PowerShell.SecretManagement
+declared as an optional external dependency. **PSGallery publish is a
+user-action runbook step, not yet performed.**
 
 Built and working:
-- `Connect-UKGPro` / `Disconnect-UKGPro`
+- `Connect-UKGPro` (three parameter sets: `Explicit` — original v0.1.0 flow;
+  `-FromVault` — reads hostname + tenant API keys from SecretManagement,
+  prompts for username/password via `Get-Credential` unless `-Credential`
+  supplied; `-FromEnvironment` — reads all five values from env vars for
+  CI / scheduled tasks) / `Disconnect-UKGPro`
+- `Save-UKGProCredential` (one-time SecretManagement setup — writes
+  hostname + two API keys as `UKGPro-Hostname` / `UKGPro-CustomerApiKey` /
+  `UKGPro-UserApiKey`; NEVER stores username/password by design)
+- `Update-UKGProCredential` (partial rotation — supports `-WhatIf` /
+  `-Confirm`; throws if no rotation params supplied)
 - `Get-UKGProEmploymentDetails` (supports `-EmployeeId` or `-EmailAddress`;
   the latter resolves via `person-details` under the hood)
 - `Get-UKGProPersonDetails` (supports `-EmployeeId` or `-EmailAddress`;
@@ -68,6 +79,34 @@ NOT yet built: everything else (see Roadmap).
   requires the "Add" role for any POST, which would force customers to
   provision a write-capable service account for a read cmdlet. Reserve
   POST/PATCH for actual write cmdlets (`New-`, `Set-`).
+- **Auth ergonomics (three flows).** `Connect-UKGPro` has three parameter
+  sets so users pick per situation:
+  - **Explicit** (default): pass hostname, credential, and both API keys as
+    parameters. Works without any external module dependency.
+  - **`-FromVault`**: reads hostname + two API keys from Microsoft
+    SecretManagement. Prompts for username/password via `Get-Credential`
+    (or accepts `-Credential`).
+  - **`-FromEnvironment`**: reads all five values from env vars
+    (`UKGPRO_HOSTNAME`, `UKGPRO_USERNAME`, `UKGPRO_PASSWORD`,
+    `UKGPRO_CUSTOMER_API_KEY`, `UKGPRO_USER_API_KEY`). CI/scheduled tasks.
+
+  **Design principle: the vault flow deliberately does NOT persist the
+  web-service-account username or password.** Only tenant-level API keys and
+  hostname. Two reasons: (1) a compromised local vault reveals only tenant
+  config, never the login secret; (2) operators uncomfortable persisting
+  their account credential on a workstation still get the one-liner
+  reconnect for the parts they were fine caching. The `-FromEnvironment`
+  path accepts username/password because CI systems have their own secret
+  stores (GitHub Actions secrets, Azure Pipelines vars) that inject env vars
+  at runtime — different security model from a workstation vault.
+
+  Reference implementations: `Public/Save-UKGProCredential.ps1`,
+  `Public/Update-UKGProCredential.ps1`, and the three parameter sets in
+  `Public/Connect-UKGPro.ps1`. SecretManagement is a soft dependency —
+  checked at runtime via `Private/Assert-UKGProSecretManagement.ps1` with a
+  copy-pasteable install command in the error message. Declared as an
+  `ExternalModuleDependency` in the psd1 (informational; does not force
+  install for users of the explicit-args flow).
 - **Privacy defaults: `Get-` cmdlets that expose hard PII (SSN, DOB,
   home address, national IDs, protected-class demographics, health
   data) must default to a whitelisted subset of identity + work-safe

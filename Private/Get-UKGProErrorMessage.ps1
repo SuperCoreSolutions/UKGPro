@@ -27,7 +27,7 @@ function Get-UKGProErrorMessage {
 
     $response = $ErrorRecord.Exception.Response
     if ($response) {
-        try { $status = [int]$response.StatusCode } catch { }
+        try { $status = [int]$response.StatusCode } catch { Write-Debug "Non-fatal: could not parse HTTP status code: $_" }
 
         if ($ErrorRecord.ErrorDetails -and $ErrorRecord.ErrorDetails.Message) {
             $bodyText = $ErrorRecord.ErrorDetails.Message
@@ -39,7 +39,7 @@ function Get-UKGProErrorMessage {
                 $bodyText = $reader.ReadToEnd()
                 $reader.Dispose()
             }
-            catch { }
+            catch { Write-Debug "Ignored non-fatal failure while parsing error body: $_" }
         }
     }
 
