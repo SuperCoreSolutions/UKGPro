@@ -22,8 +22,8 @@ v0.2.0 (2026-09-02): 10 exported cmdlets, 45 Pester tests passing on PS 7.5.1,
 zero PSScriptAnalyzer findings under the PSGallery ruleset, manifest URIs
 point at the real repo (`SuperCoreSolutions/UKGPro` — LLC-org owned as of
 2026-09-02), Microsoft.PowerShell.SecretManagement declared as an optional
-external dependency. **PSGallery publish is a user-action runbook step,
-not yet performed.**
+external dependency. **Published to PSGallery 2026-09-02**:
+https://www.powershellgallery.com/packages/UKGPro/0.2.0
 
 Built and working:
 - `Connect-UKGPro` (three parameter sets: `Explicit` — original v0.1.0 flow;
@@ -210,7 +210,34 @@ UKG "specs" on the web are synthetically generated and untrustworthy).
 - List cmdlets: `Get-Command -Module UKGPro`
 - Manifest check: `Test-ModuleManifest ./UKGPro.psd1`
 - Tests: `Invoke-Pester ./Tests` (install Pester 5+ first if needed)
-- Before publishing: `Invoke-ScriptAnalyzer -Path . -Recurse` and fix warnings.
+- Before publishing: `Invoke-ScriptAnalyzer -Path . -Recurse -Settings PSGallery`
+  and fix warnings — or just let the build script do it (see below).
+
+## Publish (PSGallery)
+
+**Always publish through `Build/Publish-UKGProModule.ps1`.** Running
+`Publish-Module` against the repo root ships CLAUDE.md, Tests/, and
+other dev-only files (harmless but noisy — v0.2.0 was published this
+way before the build script existed; see the file list on
+PSGallery). The script stages a clean copy at `Build/staging/UKGPro/`
+containing only the shipping surface — `.psd1` / `.psm1` / `LICENSE` /
+`README.md` / `Public/*.ps1` / `Private/*.ps1` — validates the staged
+manifest, runs Pester + PSScriptAnalyzer against that copy, and then
+either prints the `Publish-Module` command (default, dry-run) or runs
+it (with `-Publish -NuGetApiKey ...`).
+
+```powershell
+# Dry-run: stages + validates, prints the Publish-Module command.
+./Build/Publish-UKGProModule.ps1
+
+# Real publish (paste the PSGallery key, or pull from SecretManagement).
+./Build/Publish-UKGProModule.ps1 -Publish -NuGetApiKey '<key>'
+```
+
+The staging directory (`Build/staging/`) is gitignored. Any change to
+what should ship (new folder, new top-level file) goes in the
+`$topLevelFiles` / subfolder loop inside the script — keep the
+shipping list explicit, not "copy everything except X".
 
 ## Housekeeping
 
