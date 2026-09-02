@@ -20,9 +20,10 @@ Distribution goal: GitHub source repo + publish to the PowerShell Gallery.
 
 v0.2.0 (2026-09-02): 10 exported cmdlets, 45 Pester tests passing on PS 7.5.1,
 zero PSScriptAnalyzer findings under the PSGallery ruleset, manifest URIs
-point at the real repo (`dnsuper0695/UKGPro`), Microsoft.PowerShell.SecretManagement
-declared as an optional external dependency. **PSGallery publish is a
-user-action runbook step, not yet performed.**
+point at the real repo (`SuperCoreSolutions/UKGPro` — LLC-org owned as of
+2026-09-02), Microsoft.PowerShell.SecretManagement declared as an optional
+external dependency. **PSGallery publish is a user-action runbook step,
+not yet performed.**
 
 Built and working:
 - `Connect-UKGPro` (three parameter sets: `Explicit` — original v0.1.0 flow;
@@ -213,8 +214,8 @@ UKG "specs" on the web are synthetically generated and untrustworthy).
 
 ## Housekeeping
 
-- `UKGPro.psd1` `ProjectUri`/`LicenseUri` currently point at
-  `SuperCoreSolutions/UKGPro` — update if the real repo path differs.
-- Add an MIT `LICENSE` file (README + manifest reference MIT).
+- `UKGPro.psd1` `ProjectUri`/`LicenseUri` and the actual repo location both
+  live at `SuperCoreSolutions/UKGPro` (LLC GitHub org, confirmed 2026-09-02).
+- MIT `LICENSE` file present at repo root.
 - Never commit credentials. Use `Get-Credential` / env vars, never hardcoded
   secrets. `.gitignore` already excludes `*.secret` / `*.env`.

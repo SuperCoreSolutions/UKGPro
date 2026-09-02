@@ -31,8 +31,8 @@
     PrivateData = @{
         PSData = @{
             Tags         = @('UKG', 'UKGPro', 'HCM', 'Personnel', 'Employee', 'REST', 'IAM', 'HR', 'SecretManagement')
-            LicenseUri   = 'https://github.com/dnsuper0695/UKGPro/blob/main/LICENSE'
-            ProjectUri   = 'https://github.com/dnsuper0695/UKGPro'
+            LicenseUri   = 'https://github.com/SuperCoreSolutions/UKGPro/blob/main/LICENSE'
+            ProjectUri   = 'https://github.com/SuperCoreSolutions/UKGPro'
             ExternalModuleDependencies = @('Microsoft.PowerShell.SecretManagement')
             ReleaseNotes = @'
 v0.2.0 - Expanded read surface + auth ergonomics + secure PII defaults.
