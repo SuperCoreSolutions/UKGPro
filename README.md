@@ -1,38 +1,41 @@
 # UKGPro
 
+[![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/UKGPro?label=PSGallery&color=0072C6)](https://www.powershellgallery.com/packages/UKGPro)
+[![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/UKGPro?label=downloads&color=success)](https://www.powershellgallery.com/packages/UKGPro)
+[![PowerShell Gallery Platform](https://img.shields.io/powershellgallery/p/UKGPro)](https://www.powershellgallery.com/packages/UKGPro)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A general-purpose PowerShell module wrapping the **UKG Pro HCM** REST API. Provides typed `Get-` cmdlets for the `personnel/v1` (employment records, person details) and `configuration/v1` (org-levels, more to come) endpoint families, with a shared authentication, pagination, and date-filter layer so callers work with objects and parameters instead of URL strings and query encoding.
 
 Common use cases include HR data extracts, employee-record reporting, IAM provisioning/deprovisioning workflows, and one-off lookups from an interactive PowerShell session — but nothing in the module is tied to any single workflow. Any script that needs to read UKG Pro data can use it.
 
 Companion to the separate [UKGHRSD](../UKGHRSD) module (which covers UKG HR Service Delivery). The two are intentionally separate: different platform, authentication, and base URL.
 
-> Status: v0.2.1 — [live on PowerShell Gallery](https://www.powershellgallery.com/packages/UKGPro). Ten `Get-` and connect cmdlets across the `personnel/v1` and `configuration/v1` endpoint families, secure-by-default PII redaction, optional SecretManagement-backed auth for one-line reconnects.
-
 ## Install
 
-```powershell
-# From PowerShell Gallery
-Install-Module UKGPro -Scope CurrentUser
+Install from [PowerShell Gallery](https://www.powershellgallery.com/packages/UKGPro):
 
-# Or from source
-git clone https://github.com/SuperCoreSolutions/UKGPro.git
-Import-Module ./UKGPro/UKGPro.psd1
+```powershell
+Install-Module UKGPro -Scope CurrentUser
+Import-Module UKGPro
+```
+
+Later, to upgrade to the newest published version:
+
+```powershell
+Update-Module UKGPro
 ```
 
 Requires PowerShell 5.1+ or 7+.
 
-## Installing on Windows (Mark-of-the-Web prompts)
-
-When PowerShell modules land on a Windows machine from an internet source (`git pull` over HTTPS, downloaded ZIP, browser download), Windows attaches a hidden "Mark of the Web" (MOTW) marker to each file. Under the default execution policy, that triggers a `[R] Run once` / `[A] Always run` prompt the first time each `.ps1` file is imported — and because this module dot-sources one file per function, that means one prompt per cmdlet on every import.
-
-Strip MOTW after each pull/download before importing:
+**Working from a local checkout instead** (contributors, custom builds):
 
 ```powershell
-Get-ChildItem C:\path\to\UKGPro -Recurse | Unblock-File
-Import-Module C:\path\to\UKGPro\UKGPro.psd1 -Force
+git clone https://github.com/SuperCoreSolutions/UKGPro.git
+Import-Module ./UKGPro/UKGPro.psd1
 ```
 
-`Unblock-File` removes only the MOTW alternate data stream — no execution-policy changes, no impact on other modules or system trust. Once the module is published to PowerShell Gallery (see Roadmap), `Install-Module UKGPro` / `Update-Module UKGPro` handles this automatically and no `Unblock-File` step is needed.
+On Windows, files pulled from an internet source carry a Mark-of-the-Web attribute that triggers a `[R] Run once` prompt per `.ps1` on first import — strip it once with `Get-ChildItem C:\path\to\UKGPro -Recurse | Unblock-File`. `Install-Module` / `Update-Module` handle this automatically, so it only applies to the source-checkout path.
 
 ## Authentication
 
@@ -393,7 +396,7 @@ Tests mock the HTTP layer — no network or live tenant required.
 
 ## Roadmap
 
-Additional read cmdlets across the `personnel/v1` and `configuration/v1` endpoint families: employee demographics, supervisor details, job history, employee status, jobs, locations, positions, company details, and more. Write cmdlets later where the API supports them and where they can be exposed cleanly. First-class PowerShell Gallery release once the read surface is broad enough to be useful out-of-the-box.
+Additional read cmdlets across the `personnel/v1` and `configuration/v1` endpoint families: employee demographics, supervisor details, job history, employee status, locations, positions, and more. Write cmdlets later where the API supports them and where they can be exposed cleanly. A 1.0.0 release once every shipped cmdlet has been live-tenant validated.
 
 ## License
 

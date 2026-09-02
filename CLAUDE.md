@@ -208,8 +208,9 @@ spec, `personnel/v1`):
   POST requires the "Add" role at the UKG RBAC layer even though functionally
   read — violates the View-only-Get- design principle above)
 
-Later: write operations where the API supports them. Then PSGallery publish
-(after live-tenant validation + a `PSScriptAnalyzer` pass).
+Later: write operations where the API supports them. A 1.0.0 release once
+every shipped cmdlet has been live-tenant validated (the OPEN ITEMS section
+above is the gating list).
 
 The full official OpenAPI spec (50 endpoints) was used to build this; if
 extending, get schemas from the real spec, not third-party mirrors (some public
