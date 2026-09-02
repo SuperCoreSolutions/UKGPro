@@ -64,7 +64,7 @@ function Save-UKGProCredential {
         [string]$VaultName
     )
 
-    Assert-UKGProSecretManagement
+    Assert-UKGProSecretManagement -VaultName $VaultName
 
     $extra = @{}
     if ($VaultName) { $extra['Vault'] = $VaultName }

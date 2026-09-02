@@ -16,14 +16,26 @@ deprovisioning.
 
 Distribution goal: GitHub source repo + publish to the PowerShell Gallery.
 
-## Current state (v0.2.0)
+## Current state (v0.2.1)
 
-v0.2.0 (2026-09-02): 10 exported cmdlets, 45 Pester tests passing on PS 7.5.1,
-zero PSScriptAnalyzer findings under the PSGallery ruleset, manifest URIs
-point at the real repo (`SuperCoreSolutions/UKGPro` — LLC-org owned as of
-2026-09-02), Microsoft.PowerShell.SecretManagement declared as an optional
-external dependency. **Published to PSGallery 2026-09-02**:
-https://www.powershellgallery.com/packages/UKGPro/0.2.0
+v0.2.1 (2026-09-02): 10 exported cmdlets, zero PSScriptAnalyzer findings under
+the PSGallery ruleset, manifest URIs point at the real repo
+(`SuperCoreSolutions/UKGPro` — LLC-org owned as of 2026-09-02),
+Microsoft.PowerShell.SecretManagement declared as an optional external
+dependency. **Published to PSGallery**:
+https://www.powershellgallery.com/packages/UKGPro
+
+Delta from v0.2.0 → v0.2.1: `Assert-UKGProSecretManagement` now catches
+three fresh-machine setup failure modes (module missing, no vault
+registered, no default vault) and throws copy-pasteable install /
+`Register-SecretVault` / `Set-SecretVaultDefault` commands instead of
+letting `Set-Secret`'s cryptic "no vault provided and there is no
+default vault designated" error reach the user. Save/Update/Connect
+callers all pass `-VaultName` through so the assertion can give the
+most specific error possible. README `## Authentication` documents the
+full one-time setup (install SecretStore + `Register-SecretVault
+-DefaultVault` + optional `Set-SecretStoreConfiguration`). No cmdlet
+signature changes, no breaking changes.
 
 Built and working:
 - `Connect-UKGPro` (three parameter sets: `Explicit` — original v0.1.0 flow;

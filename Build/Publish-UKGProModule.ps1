@@ -99,8 +99,8 @@ if (-not $SkipTests) {
         }
         Import-Module Pester -MinimumVersion 5.0 -Force
         $result = Invoke-Pester -Path $testsPath -Output Detailed -PassThru
-        if ($result.FailedCount -gt 0) {
-            throw "Pester reported $($result.FailedCount) failing test(s). Fix before publishing."
+        if ($result.Result -ne 'Passed') {
+            throw "Pester run did not pass (Result=$($result.Result); Failed=$($result.FailedCount); FailedContainers=$($result.FailedContainersCount)). Fix before publishing."
         }
     }
     else {

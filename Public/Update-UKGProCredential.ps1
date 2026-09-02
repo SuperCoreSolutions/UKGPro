@@ -61,7 +61,7 @@ function Update-UKGProCredential {
         throw "Update-UKGProCredential requires at least one of -Hostname, -CustomerApiKey, or -UserApiKey."
     }
 
-    Assert-UKGProSecretManagement
+    Assert-UKGProSecretManagement -VaultName $VaultName
 
     $extra = @{}
     if ($VaultName) { $extra['Vault'] = $VaultName }

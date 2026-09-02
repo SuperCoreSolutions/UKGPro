@@ -127,7 +127,7 @@ function Connect-UKGPro {
     # --- Resolve the five values based on which parameter set was chosen ---
 
     if ($PSCmdlet.ParameterSetName -eq 'FromVault') {
-        Assert-UKGProSecretManagement
+        Assert-UKGProSecretManagement -VaultName $VaultName
 
         $extra = @{}
         if ($VaultName) { $extra['Vault'] = $VaultName }

@@ -7,6 +7,10 @@
     Run:  Invoke-Pester ./Tests
 #>
 
+# Top-level import so InModuleScope resolves during Pester's discovery phase
+# (Pester 6+ enforces this; Pester 5 tolerated a BeforeAll-only import).
+Import-Module (Join-Path (Split-Path -Parent $PSScriptRoot) 'UKGPro.psd1') -Force
+
 BeforeAll {
     $ModuleRoot = Split-Path -Parent $PSScriptRoot
     Import-Module (Join-Path $ModuleRoot 'UKGPro.psd1') -Force
@@ -615,6 +619,46 @@ Describe 'Update-UKGProCredential' {
         It 'passing no params throws before touching the vault' {
             { Update-UKGProCredential } | Should -Throw "*requires at least one*"
             $script:setSecretCalls.Count | Should -Be 0
+        }
+    }
+}
+
+Describe 'Assert-UKGProSecretManagement' -Skip:(-not (Get-Module -ListAvailable Microsoft.PowerShell.SecretManagement)) {
+    InModuleScope UKGPro {
+        It 'throws with register-vault instructions when no vault is registered' {
+            Mock Get-SecretVault { @() }
+            { Assert-UKGProSecretManagement } | Should -Throw '*Register-SecretVault*'
+        }
+
+        It 'returns silently when a default vault exists and no -VaultName supplied' {
+            Mock Get-SecretVault {
+                [pscustomobject]@{ Name = 'SecretStore'; IsDefault = $true }
+            }
+            { Assert-UKGProSecretManagement } | Should -Not -Throw
+        }
+
+        It 'throws Set-SecretVaultDefault message when vaults exist but none is default' {
+            Mock Get-SecretVault {
+                [pscustomobject]@{ Name = 'A'; IsDefault = $false }
+                [pscustomobject]@{ Name = 'B'; IsDefault = $false }
+            }
+            { Assert-UKGProSecretManagement } | Should -Throw '*Set-SecretVaultDefault*'
+        }
+
+        It 'returns silently when -VaultName matches a registered vault (even without default)' {
+            Mock Get-SecretVault {
+                [pscustomobject]@{ Name = 'A'; IsDefault = $false }
+                [pscustomobject]@{ Name = 'B'; IsDefault = $false }
+            }
+            { Assert-UKGProSecretManagement -VaultName 'A' } | Should -Not -Throw
+        }
+
+        It 'throws when -VaultName does not match any registered vault' {
+            Mock Get-SecretVault {
+                [pscustomobject]@{ Name = 'A'; IsDefault = $true }
+            }
+            { Assert-UKGProSecretManagement -VaultName 'DoesNotExist' } |
+                Should -Throw "*No SecretManagement vault named 'DoesNotExist'*"
         }
     }
 }

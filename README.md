@@ -6,13 +6,13 @@ Common use cases include HR data extracts, employee-record reporting, IAM provis
 
 Companion to the separate [UKGHRSD](../UKGHRSD) module (which covers UKG HR Service Delivery). The two are intentionally separate: different platform, authentication, and base URL.
 
-> Status: v0.2.0. Ten `Get-` and connect cmdlets across the `personnel/v1` and `configuration/v1` endpoint families, secure-by-default PII redaction, optional SecretManagement-backed auth for one-line reconnects. PSGallery publish pending.
+> Status: v0.2.1 — [live on PowerShell Gallery](https://www.powershellgallery.com/packages/UKGPro). Ten `Get-` and connect cmdlets across the `personnel/v1` and `configuration/v1` endpoint families, secure-by-default PII redaction, optional SecretManagement-backed auth for one-line reconnects.
 
 ## Install
 
 ```powershell
-# From PowerShell Gallery (once published)
-Install-Module UKGPro
+# From PowerShell Gallery
+Install-Module UKGPro -Scope CurrentUser
 
 # Or from source
 git clone https://github.com/SuperCoreSolutions/UKGPro.git
@@ -60,14 +60,29 @@ Connect-UKGPro -Hostname 'service5.ultipro.com' `
 
 ### 2. Vault-backed — save the tenant config once, reconnect with one line
 
-Requires the `Microsoft.PowerShell.SecretManagement` module (plus a registered vault such as `SecretStore`). Install once:
+Uses Microsoft's [SecretManagement](https://learn.microsoft.com/powershell/utility-modules/secretmanagement/overview) framework. It's the SecretManagement API + a vault provider (`SecretStore` is Microsoft's default cross-platform choice) + a registered vault marked as default. The `Save-UKGProCredential` / `Update-UKGProCredential` / `Connect-UKGPro -FromVault` cmdlets detect each of those pieces and throw a copy-pasteable setup command if anything is missing, so you'll be prompted through the right install step whenever you run one on a fresh machine.
+
+**One-time machine setup:**
 
 ```powershell
+# 1. Install the SecretManagement API + Microsoft's default vault provider.
 Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser
 Install-Module Microsoft.PowerShell.SecretStore        -Scope CurrentUser
+
+# 2. Register SecretStore as a vault, mark it as the default.
+Register-SecretVault -Name SecretStore `
+                     -ModuleName Microsoft.PowerShell.SecretStore `
+                     -DefaultVault
+
+# 3. (Optional) Configure vault password / timeout up front instead of
+#    being prompted on the first Set-Secret call. Skip to be prompted
+#    lazily.
+Set-SecretStoreConfiguration
 ```
 
-Then, one-time setup — writes hostname + both API keys to the default vault:
+The vault password is separate from your UKG credential — it unlocks the local store on subsequent sessions. Prefer another SecretManagement backend? Install that vault module in step 1 (e.g. [`SecretManagement.Keychain`](https://www.powershellgallery.com/packages/SecretManagement.KeyChain) for macOS, `Microsoft.PowerShell.SecretManagement.AzKeyVault` for Azure) and register it in step 2 instead — everything downstream still works.
+
+**One-time module setup** — writes hostname + both API keys to the default vault:
 
 ```powershell
 Save-UKGProCredential -Hostname 'service5.ultipro.com' `
@@ -75,7 +90,7 @@ Save-UKGProCredential -Hostname 'service5.ultipro.com' `
                       -UserApiKey    'your-user-api-key'
 ```
 
-Every subsequent session:
+**Every subsequent session:**
 
 ```powershell
 Connect-UKGPro -FromVault    # prompts for username/password only
