@@ -16,13 +16,24 @@ deprovisioning.
 
 Distribution goal: GitHub source repo + publish to the PowerShell Gallery.
 
-## Current state (v0.3.0)
+## Current state (v0.3.1)
 
-v0.3.0 (2026-09-02): 10 exported cmdlets, zero PSScriptAnalyzer findings under
+v0.3.1 (2026-09-08): 10 exported cmdlets, zero PSScriptAnalyzer findings under
 the PSGallery ruleset, manifest URIs point at `SuperCoreSolutions/UKGPro`
 (LLC-org owned as of 2026-09-02), Microsoft.PowerShell.SecretManagement
 declared as an optional external dependency. **Published to PSGallery**:
 https://www.powershellgallery.com/packages/UKGPro
+
+Delta from v0.3.0 → v0.3.1: `Get-UKGProEmploymentDetails -EmailAddress`
+no longer throws when person-details returns multiple employees for the
+same email. Instead, `Resolve-UKGProEmployeeIdByEmail` (private) now
+returns an array of `{EmployeeId, CompanyId}` records (deduped by
+employeeId), and `Get-UKGProEmploymentDetails` fans out — running
+employment-details once per resolved employee and emitting the union.
+No cmdlet signature changes. Callers who want a single record should
+switch to `-EmployeeId`. Root cause: user report 2026-09-08 that a
+tenant with two employees sharing a work email was blocked from
+querying either one by email.
 
 Delta from v0.2.1 → v0.3.0 (**BREAKING**): `Get-UKGProEmploymentDetails`
 termination-date filter surface redesigned. The old `-TerminatedOn X

@@ -202,7 +202,7 @@ Wraps `GET /personnel/v1/employment-details`. All filters are optional and appli
 |---|---|---|
 | `-CompanyId` | `string` | Filter by company identifier. |
 | `-EmployeeId` | `string` | Filter by employee identifier. Mutually exclusive with `-EmailAddress`. |
-| `-EmailAddress` | `string` | Filter by the employee's UKG-registered email. Resolved via `/person-details` under the hood. Mutually exclusive with `-EmployeeId`. |
+| `-EmailAddress` | `string` | Filter by the employee's UKG-registered email. Resolved via `/person-details` under the hood; if multiple distinct employees share the email, records for all of them are returned. Mutually exclusive with `-EmployeeId`. |
 | `-EmployeeNumber` | `string` | Filter by employee number. |
 | `-EmployeeStatusCode` | `string` | Filter by employee status code (tenant-defined, e.g. `A` for active). |
 | `-EmployeeTypeCode` | `string` | Filter by employee type code. |
@@ -220,7 +220,7 @@ Wraps `GET /personnel/v1/employment-details`. All filters are optional and appli
 | `-PageSize` | `int` | Rows per page. Default: `100`. |
 
 <a id="get-ukgproemploymentdetails-notes"></a>
-**Note on `-EmailAddress`:** the employment-details endpoint doesn't accept `emailAddress` as a query parameter, so the module transparently resolves email → `employeeId` via `GET /personnel/v1/person-details` (a View-only lookup), then queries employment-details with the resolved ID. Two HTTP calls, one cmdlet invocation.
+**Note on `-EmailAddress`:** the employment-details endpoint doesn't accept `emailAddress` as a query parameter, so the module transparently resolves email → `employeeId` via `GET /personnel/v1/person-details` (a View-only lookup), then queries employment-details with the resolved ID. If more than one distinct employee shares the email (rare but possible on some tenants), the cmdlet fans out — one employment-details call per resolved employee — and returns the union rather than throwing. Total HTTP calls: `1 + N` where `N` is the number of matches.
 
 ### Get-UKGProPersonDetails
 

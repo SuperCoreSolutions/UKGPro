@@ -27,10 +27,12 @@ function Get-UKGProEmploymentDetails {
 
     .PARAMETER EmailAddress
         Filter by the employee's UKG-registered email address. The email is
-        resolved to an employee ID via GET /personnel/v1/person-details (a
-        read-only endpoint requiring only the View role) and the resolved ID
-        is then used for the employment-details query. Mutually exclusive
-        with -EmployeeId.
+        resolved to one or more employee IDs via GET /personnel/v1/person-details
+        (a read-only endpoint requiring only the View role) and an
+        employment-details query is issued for each. If multiple distinct
+        employees share the email, records for all of them are returned;
+        callers who want just one should switch to -EmployeeId. Mutually
+        exclusive with -EmployeeId.
 
     .PARAMETER EmployeeNumber
         Filter by employee number.
@@ -158,44 +160,53 @@ function Get-UKGProEmploymentDetails {
         throw "-EmailAddress and -EmployeeId cannot be used together. Choose one."
     }
 
-    # Resolve email -> employeeId up front so the rest of the query flow is
-    # identical to the -EmployeeId path. Uses a View-only GET resolver.
+    # Resolve email -> one or more employeeIds. Non-email paths iterate once
+    # with $EmployeeId as-is (which may be empty for list-mode, in which case
+    # the query-builder just doesn't add an employeeId filter). The email
+    # path fans out: if person-details returns multiple distinct employees
+    # sharing that email, we run employment-details for each and emit the
+    # union rather than throwing.
     if ($EmailAddress) {
-        $resolved = Resolve-UKGProEmployeeIdByEmail -EmailAddress $EmailAddress
-        $EmployeeId = $resolved.EmployeeId
+        $resolved   = @(Resolve-UKGProEmployeeIdByEmail -EmailAddress $EmailAddress)
+        $idsToQuery = @($resolved | ForEach-Object { $_.EmployeeId })
+    }
+    else {
+        $idsToQuery = @($EmployeeId)
     }
 
-    $q = @{}
-    if ($CompanyId)               { $q['companyId']               = $CompanyId }
-    if ($EmployeeId)              { $q['employeeId']              = $EmployeeId }
-    if ($EmployeeNumber)          { $q['employeeNumber']          = $EmployeeNumber }
-    if ($EmployeeStatusCode)      { $q['employeeStatusCode']      = $EmployeeStatusCode }
-    if ($EmployeeTypeCode)        { $q['employeeTypeCode']        = $EmployeeTypeCode }
-    if ($SupervisorId)            { $q['supervisorID']            = $SupervisorId }
-    if ($JobTitle)                { $q['jobTitle']                = $JobTitle }
-    if ($PrimaryJobCode)          { $q['primaryJobCode']          = $PrimaryJobCode }
-    if ($PrimaryWorkLocationCode) { $q['primaryWorkLocationCode'] = $PrimaryWorkLocationCode }
+    foreach ($eid in $idsToQuery) {
+        $q = @{}
+        if ($CompanyId)               { $q['companyId']               = $CompanyId }
+        if ($eid)                     { $q['employeeId']              = $eid }
+        if ($EmployeeNumber)          { $q['employeeNumber']          = $EmployeeNumber }
+        if ($EmployeeStatusCode)      { $q['employeeStatusCode']      = $EmployeeStatusCode }
+        if ($EmployeeTypeCode)        { $q['employeeTypeCode']        = $EmployeeTypeCode }
+        if ($SupervisorId)            { $q['supervisorID']            = $SupervisorId }
+        if ($JobTitle)                { $q['jobTitle']                = $JobTitle }
+        if ($PrimaryJobCode)          { $q['primaryJobCode']          = $PrimaryJobCode }
+        if ($PrimaryWorkLocationCode) { $q['primaryWorkLocationCode'] = $PrimaryWorkLocationCode }
 
-    switch ($PSCmdlet.ParameterSetName) {
-        'TerminatedOn' {
-            $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator EqualTo -Date $TerminatedOn
+        switch ($PSCmdlet.ParameterSetName) {
+            'TerminatedOn' {
+                $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator EqualTo -Date $TerminatedOn
+            }
+            'TerminatedSince' {
+                $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator GreaterThan -Date $TerminatedSince
+            }
+            'TerminatedBefore' {
+                $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator LessThan -Date $TerminatedBefore
+            }
+            'TerminatedRange' {
+                $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator Between `
+                    -RangeStart $TerminatedBetweenStart -RangeEnd $TerminatedBetweenEnd
+            }
         }
-        'TerminatedSince' {
-            $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator GreaterThan -Date $TerminatedSince
+
+        if ($PSBoundParameters.ContainsKey('ChangedSince')) {
+            $q['dateTimeChanged'] = ConvertTo-UKGProDateFilter -Operator GreaterThan -Date $ChangedSince
         }
-        'TerminatedBefore' {
-            $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator LessThan -Date $TerminatedBefore
-        }
-        'TerminatedRange' {
-            $q['dateOfTermination'] = ConvertTo-UKGProDateFilter -Operator Between `
-                -RangeStart $TerminatedBetweenStart -RangeEnd $TerminatedBetweenEnd
-        }
+
+        Invoke-UKGProRequest -Method Get -Path '/personnel/v1/employment-details' `
+            -Query $q -PageSize $PageSize -MaxResults $MaxResults
     }
-
-    if ($PSBoundParameters.ContainsKey('ChangedSince')) {
-        $q['dateTimeChanged'] = ConvertTo-UKGProDateFilter -Operator GreaterThan -Date $ChangedSince
-    }
-
-    Invoke-UKGProRequest -Method Get -Path '/personnel/v1/employment-details' `
-        -Query $q -PageSize $PageSize -MaxResults $MaxResults
 }

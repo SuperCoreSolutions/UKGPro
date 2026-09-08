@@ -117,13 +117,14 @@ Describe 'Resolve-UKGProEmployeeIdByEmail' {
             Connect-UKGPro -Hostname 'h' -Credential $cred -CustomerApiKey 'k' -UserApiKey 'u'
         }
 
-        It 'returns EmployeeId and CompanyId when person-details returns one match' {
+        It 'returns a single-element array of {EmployeeId, CompanyId} when person-details returns one match' {
             Mock Invoke-RestMethod {
                 @([pscustomobject]@{ employeeId = '000123'; companyId = 'ACME'; emailAddress = 'a@x.com' })
             }
-            $r = Resolve-UKGProEmployeeIdByEmail -EmailAddress 'a@x.com'
-            $r.EmployeeId | Should -Be '000123'
-            $r.CompanyId  | Should -Be 'ACME'
+            $r = @(Resolve-UKGProEmployeeIdByEmail -EmailAddress 'a@x.com')
+            $r.Count      | Should -Be 1
+            $r[0].EmployeeId | Should -Be '000123'
+            $r[0].CompanyId  | Should -Be 'ACME'
         }
 
         It 'throws "no employee found" when the response is empty' {
@@ -132,15 +133,28 @@ Describe 'Resolve-UKGProEmployeeIdByEmail' {
                 Should -Throw "*No employee found*nobody@nowhere.example*"
         }
 
-        It 'throws "multiple employees" when the response has more than one match' {
+        It 'returns one record per distinct employee when multiple share an email' {
             Mock Invoke-RestMethod {
                 @(
                     [pscustomobject]@{ employeeId = '1'; companyId = 'A' }
                     [pscustomobject]@{ employeeId = '2'; companyId = 'B' }
                 )
             }
-            { Resolve-UKGProEmployeeIdByEmail -EmailAddress 'dup@x.com' } |
-                Should -Throw "*Multiple employees (2)*dup@x.com*disambiguate*"
+            $r = @(Resolve-UKGProEmployeeIdByEmail -EmailAddress 'dup@x.com')
+            $r.Count       | Should -Be 2
+            $r[0].EmployeeId | Should -Be '1'
+            $r[1].EmployeeId | Should -Be '2'
+        }
+
+        It 'dedupes by employeeId when person-details returns the same person twice' {
+            Mock Invoke-RestMethod {
+                @(
+                    [pscustomobject]@{ employeeId = '000123'; companyId = 'ACME' }
+                    [pscustomobject]@{ employeeId = '000123'; companyId = 'ACME' }
+                )
+            }
+            $r = @(Resolve-UKGProEmployeeIdByEmail -EmailAddress 'a@x.com')
+            $r.Count | Should -Be 1
         }
     }
 }
@@ -239,6 +253,38 @@ Describe 'Get-UKGProEmploymentDetails -EmailAddress' {
                 Should -Throw "*cannot be used together*"
 
             $script:calls.Count | Should -Be 0
+        }
+
+        It '-EmailAddress fans out and queries employment-details once per resolved employee' {
+            # Two distinct employees share the email. Expected wire: 1 person-details
+            # call (email lookup) + 2 employment-details calls (one per resolved id).
+            # Records for both employees come back as the union.
+            Mock Invoke-RestMethod {
+                $call = @{ Uri = $Uri; Headers = $Headers }
+                $script:calls.Add($call)
+                if ($Uri.AbsoluteUri -match '/personnel/v1/person-details') {
+                    return @(
+                        [pscustomobject]@{ employeeId = 'EE111'; companyId = 'ACME' }
+                        [pscustomobject]@{ employeeId = 'EE222'; companyId = 'ACME' }
+                    )
+                }
+                if ($Uri.AbsoluteUri -match 'employeeId=EE111') {
+                    return @([pscustomobject]@{ employeeId = 'EE111'; jobTitle = 'Engineer' })
+                }
+                if ($Uri.AbsoluteUri -match 'employeeId=EE222') {
+                    return @([pscustomobject]@{ employeeId = 'EE222'; jobTitle = 'Manager' })
+                }
+                return @()
+            }
+
+            $results = @(Get-UKGProEmploymentDetails -EmailAddress 'shared@example.com')
+
+            $script:calls.Count                | Should -Be 3
+            $script:calls[0].Uri.AbsoluteUri   | Should -Match '/personnel/v1/person-details\?.*emailAddress=shared'
+            $script:calls[1].Uri.AbsoluteUri   | Should -Match '/personnel/v1/employment-details\?.*employeeId=EE111'
+            $script:calls[2].Uri.AbsoluteUri   | Should -Match '/personnel/v1/employment-details\?.*employeeId=EE222'
+            $results.Count                     | Should -Be 2
+            ($results | ForEach-Object employeeId) | Should -Be @('EE111', 'EE222')
         }
     }
 }

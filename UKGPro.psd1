@@ -1,6 +1,6 @@
 @{
     RootModule           = 'UKGPro.psm1'
-    ModuleVersion        = '0.3.0'
+    ModuleVersion        = '0.3.1'
     CompatiblePSEditions  = @('Desktop', 'Core')
     GUID                 = 'ce04853e-e752-4d4b-b9a5-3297f933dfd2'
 
@@ -35,34 +35,27 @@
             ProjectUri   = 'https://github.com/SuperCoreSolutions/UKGPro'
             ExternalModuleDependencies = @('Microsoft.PowerShell.SecretManagement')
             ReleaseNotes = @'
-v0.3.0 - Termination-date filter redesign (BREAKING).
+v0.3.1 - Get-UKGProEmploymentDetails -EmailAddress now fans out on
+multi-match instead of throwing.
 
-Get-UKGProEmploymentDetails: -TerminatedOperator is REMOVED. The
-single -TerminatedOn <date> parameter is replaced with three
-intent-named parameters, each with its own natural semantic and no
-operator argument required:
+Previously, if person-details returned more than one employee for the
+supplied email, the cmdlet threw "Multiple employees (N) found ... use
+-EmployeeId to disambiguate" and returned nothing. That was almost
+never the useful outcome -- callers who genuinely had duplicate emails
+in their tenant just wanted employment records for all of them.
 
-  -TerminatedOn <date>      terminated on that exact date (equality)
-  -TerminatedSince <date>   terminated on/after that date (>)
-  -TerminatedBefore <date>  terminated on/before that date (<)
-  -TerminatedBetweenStart / -TerminatedBetweenEnd    range (unchanged)
+Now: the resolver returns all distinct employeeIds that matched
+(deduped by employeeId in case a tenant returns the same person more
+than once), and the cmdlet runs employment-details for each and emits
+the union. No cmdlet signature changes. Callers who explicitly wanted
+the old fail-loud behavior should filter their tenant data before
+lookup, or continue to use -EmployeeId.
 
-Migration:
-  OLD: -TerminatedOn X -TerminatedOperator GreaterThan  -> -TerminatedSince X
-  OLD: -TerminatedOn X -TerminatedOperator LessThan     -> -TerminatedBefore X
-  OLD: -TerminatedOn X -TerminatedOperator EqualTo      -> -TerminatedOn X (default now)
-  OLD: -TerminatedOn X (no -TerminatedOperator)         -> -TerminatedSince X
-    (old default was GreaterThan; the parameter name promised equality
-     but the behavior returned "after that date" -- root cause of the fix)
-
-The four termination-filter parameters are mutually exclusive via
-parameter sets, so PowerShell now catches "wait, which one did I
-mean?" mistakes at bind time.
-
-v0.2.1 (previous) - Friendlier first-run errors for SecretManagement
-setup: Save/Update-UKGProCredential and Connect-UKGPro -FromVault now
-detect missing module / missing vault / missing default vault up
-front and throw copy-pasteable setup commands.
+v0.3.0 (previous) - Termination-date filter redesign (BREAKING).
+Get-UKGProEmploymentDetails: -TerminatedOperator removed. Replaced by
+four mutually-exclusive intent-named params: -TerminatedOn (equality),
+-TerminatedSince (>), -TerminatedBefore (<), and the existing
+-TerminatedBetweenStart/-End range.
 '@
         }
     }
