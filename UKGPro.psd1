@@ -1,6 +1,6 @@
 @{
     RootModule           = 'UKGPro.psm1'
-    ModuleVersion        = '0.3.2'
+    ModuleVersion        = '0.3.3'
     FormatsToProcess     = @('UKGPro.format.ps1xml')
     CompatiblePSEditions  = @('Desktop', 'Core')
     GUID                 = 'ce04853e-e752-4d4b-b9a5-3297f933dfd2'
@@ -36,7 +36,9 @@
             ProjectUri   = 'https://github.com/SuperCoreSolutions/UKGPro'
             ExternalModuleDependencies = @('Microsoft.PowerShell.SecretManagement')
             ReleaseNotes = @'
-v0.3.2 - Compact default table views for every Get- cmdlet.
+v0.3.3 - Compact default table views for every Get- cmdlet.
+(Version bumped from 0.3.2 because a 0.3.2 package already existed on
+PSGallery; content is unchanged from what was staged for 0.3.2.)
 
 Records returned by the Get-UKGProEmploymentDetails,
 Get-UKGProPersonDetails, Get-UKGProOrgLevel, Get-UKGProJobGroup,

@@ -16,15 +16,17 @@ deprovisioning.
 
 Distribution goal: GitHub source repo + publish to the PowerShell Gallery.
 
-## Current state (v0.3.2)
+## Current state (v0.3.3)
 
-v0.3.2 (2026-09-08): 10 exported cmdlets, zero PSScriptAnalyzer findings under
+v0.3.3 (2026-09-08): 10 exported cmdlets, zero PSScriptAnalyzer findings under
 the PSGallery ruleset, manifest URIs point at `SuperCoreSolutions/UKGPro`
 (LLC-org owned as of 2026-09-02), Microsoft.PowerShell.SecretManagement
 declared as an optional external dependency. **Published to PSGallery**:
 https://www.powershellgallery.com/packages/UKGPro
 
-Delta from v0.3.1 → v0.3.2: added `UKGPro.format.ps1xml` (referenced
+Delta from v0.3.1 → v0.3.3 (v0.3.2 was consumed by a pre-existing
+PSGallery package; content shipped in v0.3.3 is what was staged as
+v0.3.2): added `UKGPro.format.ps1xml` (referenced
 from the manifest via `FormatsToProcess`) + a private
 `Add-UKGProTypeName` helper that every Get- cmdlet routes its
 `Invoke-UKGProRequest` results through. Six compact `View` entries —
