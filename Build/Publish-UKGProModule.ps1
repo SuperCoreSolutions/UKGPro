@@ -122,6 +122,7 @@ New-Item -ItemType Directory -Path $StagedModule -Force | Out-Null
 $topLevelFiles = @(
     "$ModuleName.psd1"
     "$ModuleName.psm1"
+    "$ModuleName.format.ps1xml"
     'LICENSE'
     'README.md'
 )

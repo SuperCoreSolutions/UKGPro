@@ -39,6 +39,21 @@ Describe 'Module surface' {
         { Test-ModuleManifest (Join-Path (Split-Path -Parent $PSScriptRoot) 'UKGPro.psd1') } |
             Should -Not -Throw
     }
+
+    It 'declares FormatsToProcess pointing at UKGPro.format.ps1xml' {
+        $manifest = Test-ModuleManifest (Join-Path (Split-Path -Parent $PSScriptRoot) 'UKGPro.psd1')
+        # Test-ModuleManifest resolves the paths under ExportedFormatFiles.
+        ($manifest.ExportedFormatFiles | ForEach-Object { Split-Path $_ -Leaf }) |
+            Should -Contain 'UKGPro.format.ps1xml'
+    }
+
+    It 'the format file is well-formed XML that Update-FormatData accepts' {
+        $formatFile = Join-Path (Split-Path -Parent $PSScriptRoot) 'UKGPro.format.ps1xml'
+        Test-Path $formatFile | Should -BeTrue
+        # -PrependPath validates the file and registers it in the session
+        # without complaint if the schema is valid.
+        { Update-FormatData -PrependPath $formatFile } | Should -Not -Throw
+    }
 }
 
 Describe 'ConvertTo-UKGProDateFilter' {
@@ -253,6 +268,24 @@ Describe 'Get-UKGProEmploymentDetails -EmailAddress' {
                 Should -Throw "*cannot be used together*"
 
             $script:calls.Count | Should -Be 0
+        }
+
+        It 'tags returned records with the UKGPro.EmploymentDetails TypeName so the format.ps1xml view applies' {
+            Mock Invoke-RestMethod {
+                @(
+                    [pscustomobject]@{ employeeId = 'EE1'; companyId = 'ACME'; jobTitle = 'Engineer' }
+                    [pscustomobject]@{ employeeId = 'EE2'; companyId = 'ACME'; jobTitle = 'Manager'  }
+                )
+            }
+
+            $results = @(Get-UKGProEmploymentDetails)
+
+            $results.Count | Should -Be 2
+            foreach ($r in $results) {
+                # Insert(0, ...) puts our TypeName at the front so the
+                # formatter matches it before any generic PSCustomObject view.
+                $r.PSObject.TypeNames[0] | Should -Be 'UKGPro.EmploymentDetails'
+            }
         }
 
         It '-EmailAddress fans out and queries employment-details once per resolved employee' {

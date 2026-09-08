@@ -16,13 +16,27 @@ deprovisioning.
 
 Distribution goal: GitHub source repo + publish to the PowerShell Gallery.
 
-## Current state (v0.3.1)
+## Current state (v0.3.2)
 
-v0.3.1 (2026-09-08): 10 exported cmdlets, zero PSScriptAnalyzer findings under
+v0.3.2 (2026-09-08): 10 exported cmdlets, zero PSScriptAnalyzer findings under
 the PSGallery ruleset, manifest URIs point at `SuperCoreSolutions/UKGPro`
 (LLC-org owned as of 2026-09-02), Microsoft.PowerShell.SecretManagement
 declared as an optional external dependency. **Published to PSGallery**:
 https://www.powershellgallery.com/packages/UKGPro
+
+Delta from v0.3.1 → v0.3.2: added `UKGPro.format.ps1xml` (referenced from
+the manifest via `FormatsToProcess`). Defines a compact 4-column table
+view — `EmployeeId`, `CompanyId`, `JobTitle`, `Terminated` — for the
+`UKGPro.EmploymentDetails` TypeName. `Get-UKGProEmploymentDetails` tags
+each returned record with that TypeName so the default formatter uses
+the table view; `| Format-List` still shows every property (the format
+file deliberately defines no ListControl, matching the Get-Mailbox /
+Exchange convention). Motivated by the v0.3.1 fan-out surfacing
+wall-of-text output when two employees share an email.
+
+If more cmdlets get compact default views later, add more `View` entries
+to `UKGPro.format.ps1xml` with new module-scoped TypeNames (e.g.
+`UKGPro.PersonDetails`) and tag the returned records the same way.
 
 Delta from v0.3.0 → v0.3.1: `Get-UKGProEmploymentDetails -EmailAddress`
 no longer throws when person-details returns multiple employees for the
@@ -30,10 +44,6 @@ same email. Instead, `Resolve-UKGProEmployeeIdByEmail` (private) now
 returns an array of `{EmployeeId, CompanyId}` records (deduped by
 employeeId), and `Get-UKGProEmploymentDetails` fans out — running
 employment-details once per resolved employee and emitting the union.
-No cmdlet signature changes. Callers who want a single record should
-switch to `-EmployeeId`. Root cause: user report 2026-09-08 that a
-tenant with two employees sharing a work email was blocked from
-querying either one by email.
 
 Delta from v0.2.1 → v0.3.0 (**BREAKING**): `Get-UKGProEmploymentDetails`
 termination-date filter surface redesigned. The old `-TerminatedOn X

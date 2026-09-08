@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    UKGPro format definitions.
+
+    Only defines TableControl views. Deliberately no ListControl entries:
+    that way `| Format-List` on a tagged object falls back to PowerShell's
+    default "show every property" behavior (same convention Exchange uses:
+    `Get-Mailbox X` = compact table, `Get-Mailbox X | fl` = everything).
+-->
+<Configuration>
+  <ViewDefinitions>
+
+    <View>
+      <Name>UKGPro.EmploymentDetails</Name>
+      <ViewSelectedBy>
+        <TypeName>UKGPro.EmploymentDetails</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>EmployeeId</Label>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>CompanyId</Label>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>JobTitle</Label>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Terminated</Label>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>employeeId</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>companyId</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>jobTitle</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>dateOfTermination</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+  </ViewDefinitions>
+</Configuration>

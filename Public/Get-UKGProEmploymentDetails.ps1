@@ -206,7 +206,16 @@ function Get-UKGProEmploymentDetails {
             $q['dateTimeChanged'] = ConvertTo-UKGProDateFilter -Operator GreaterThan -Date $ChangedSince
         }
 
+        # Tag each returned record with a module-scoped TypeName so
+        # PowerShell's default formatter picks up the compact 4-column view
+        # defined in UKGPro.format.ps1xml. `| Format-List` on tagged objects
+        # still shows every property (the format file deliberately defines
+        # no ListControl for this type).
         Invoke-UKGProRequest -Method Get -Path '/personnel/v1/employment-details' `
-            -Query $q -PageSize $PageSize -MaxResults $MaxResults
+            -Query $q -PageSize $PageSize -MaxResults $MaxResults |
+            ForEach-Object {
+                $_.PSObject.TypeNames.Insert(0, 'UKGPro.EmploymentDetails')
+                $_
+            }
     }
 }

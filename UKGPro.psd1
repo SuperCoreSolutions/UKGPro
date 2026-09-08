@@ -1,6 +1,7 @@
 @{
     RootModule           = 'UKGPro.psm1'
-    ModuleVersion        = '0.3.1'
+    ModuleVersion        = '0.3.2'
+    FormatsToProcess     = @('UKGPro.format.ps1xml')
     CompatiblePSEditions  = @('Desktop', 'Core')
     GUID                 = 'ce04853e-e752-4d4b-b9a5-3297f933dfd2'
 
@@ -35,21 +36,26 @@
             ProjectUri   = 'https://github.com/SuperCoreSolutions/UKGPro'
             ExternalModuleDependencies = @('Microsoft.PowerShell.SecretManagement')
             ReleaseNotes = @'
-v0.3.1 - Get-UKGProEmploymentDetails -EmailAddress now fans out on
-multi-match instead of throwing.
+v0.3.2 - Compact default table view for Get-UKGProEmploymentDetails.
 
-Previously, if person-details returned more than one employee for the
-supplied email, the cmdlet threw "Multiple employees (N) found ... use
--EmployeeId to disambiguate" and returned nothing. That was almost
-never the useful outcome -- callers who genuinely had duplicate emails
-in their tenant just wanted employment records for all of them.
+Records returned by Get-UKGProEmploymentDetails now render as a
+four-column table by default (EmployeeId, CompanyId, JobTitle,
+Terminated) -- much easier to scan when a query returns multiple
+employees (e.g. the -EmailAddress fan-out from v0.3.1 or any list
+query). Every property is still on the object; `| Format-List` shows
+them all, same convention as Get-Mailbox in Exchange.
 
-Now: the resolver returns all distinct employeeIds that matched
-(deduped by employeeId in case a tenant returns the same person more
-than once), and the cmdlet runs employment-details for each and emits
-the union. No cmdlet signature changes. Callers who explicitly wanted
-the old fail-loud behavior should filter their tenant data before
-lookup, or continue to use -EmployeeId.
+Implementation: new UKGPro.format.ps1xml + records tagged with the
+UKGPro.EmploymentDetails TypeName. No cmdlet signature changes; no
+property changes; existing scripts that access properties by name are
+unaffected. Scripts that captured Out-String output would see
+different formatted text.
+
+v0.3.1 (previous) - Get-UKGProEmploymentDetails -EmailAddress now
+fans out on multi-match instead of throwing. If person-details returns
+multiple distinct employees for the supplied email, records for all
+of them are returned rather than a "use -EmployeeId to disambiguate"
+error.
 
 v0.3.0 (previous) - Termination-date filter redesign (BREAKING).
 Get-UKGProEmploymentDetails: -TerminatedOperator removed. Replaced by
