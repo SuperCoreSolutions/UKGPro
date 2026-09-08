@@ -222,7 +222,7 @@ Wraps `GET /personnel/v1/employment-details`. All filters are optional and appli
 <a id="get-ukgproemploymentdetails-notes"></a>
 **Note on `-EmailAddress`:** the employment-details endpoint doesn't accept `emailAddress` as a query parameter, so the module transparently resolves email → `employeeId` via `GET /personnel/v1/person-details` (a View-only lookup), then queries employment-details with the resolved ID. If more than one distinct employee shares the email (rare but possible on some tenants), the cmdlet fans out — one employment-details call per resolved employee — and returns the union rather than throwing. Total HTTP calls: `1 + N` where `N` is the number of matches.
 
-**Note on output formatting:** returned records default to a compact 4-column table (`EmployeeId`, `CompanyId`, `JobTitle`, `Terminated`) — enough to distinguish multiple employees at a glance. Every property is still on the object; pipe through `Format-List` to see them all. Same convention `Get-Mailbox` uses in Exchange PowerShell:
+**Note on output formatting:** returned records default to a compact 4-column table (`EmployeeId`, `CompanyId`, `JobTitle`, `Status` — populated from the `employeeStatusCode` field) — enough to distinguish multiple employees at a glance. Every property is still on the object; pipe through `Format-List` to see them all. Same convention `Get-Mailbox` uses in Exchange PowerShell:
 
 ```powershell
 # Compact 4-column table by default

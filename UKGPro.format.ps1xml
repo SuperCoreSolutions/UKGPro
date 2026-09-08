@@ -27,7 +27,7 @@
             <Label>JobTitle</Label>
           </TableColumnHeader>
           <TableColumnHeader>
-            <Label>Terminated</Label>
+            <Label>Status</Label>
           </TableColumnHeader>
         </TableHeaders>
         <TableRowEntries>
@@ -43,7 +43,7 @@
                 <PropertyName>jobTitle</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
-                <PropertyName>dateOfTermination</PropertyName>
+                <PropertyName>employeeStatusCode</PropertyName>
               </TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>

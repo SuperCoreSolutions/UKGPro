@@ -26,8 +26,8 @@ https://www.powershellgallery.com/packages/UKGPro
 
 Delta from v0.3.1 → v0.3.2: added `UKGPro.format.ps1xml` (referenced from
 the manifest via `FormatsToProcess`). Defines a compact 4-column table
-view — `EmployeeId`, `CompanyId`, `JobTitle`, `Terminated` — for the
-`UKGPro.EmploymentDetails` TypeName. `Get-UKGProEmploymentDetails` tags
+view — `EmployeeId`, `CompanyId`, `JobTitle`, `Status` (from
+`employeeStatusCode`) — for the `UKGPro.EmploymentDetails` TypeName. `Get-UKGProEmploymentDetails` tags
 each returned record with that TypeName so the default formatter uses
 the table view; `| Format-List` still shows every property (the format
 file deliberately defines no ListControl, matching the Get-Mailbox /

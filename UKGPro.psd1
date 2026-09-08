@@ -40,7 +40,7 @@ v0.3.2 - Compact default table view for Get-UKGProEmploymentDetails.
 
 Records returned by Get-UKGProEmploymentDetails now render as a
 four-column table by default (EmployeeId, CompanyId, JobTitle,
-Terminated) -- much easier to scan when a query returns multiple
+Status) -- much easier to scan when a query returns multiple
 employees (e.g. the -EmailAddress fan-out from v0.3.1 or any list
 query). Every property is still on the object; `| Format-List` shows
 them all, same convention as Get-Mailbox in Exchange.
