@@ -36,33 +36,29 @@
             ProjectUri   = 'https://github.com/SuperCoreSolutions/UKGPro'
             ExternalModuleDependencies = @('Microsoft.PowerShell.SecretManagement')
             ReleaseNotes = @'
-v0.3.3 - Compact default table views for every Get- cmdlet.
-(Version bumped from 0.3.2 because a 0.3.2 package already existed on
-PSGallery; content is unchanged from what was staged for 0.3.2.)
+v0.3.3 - Compact default table views extended to the remaining
+Get- cmdlets (Get-UKGProPersonDetails, Get-UKGProOrgLevel,
+Get-UKGProJobGroup, Get-UKGProJob, Get-UKGProCompanyDetails), so
+every Get- cmdlet in the module now shares the same Get-Mailbox-style
+output convention introduced for Get-UKGProEmploymentDetails in
+v0.3.2. Column choices:
 
-Records returned by the Get-UKGProEmploymentDetails,
-Get-UKGProPersonDetails, Get-UKGProOrgLevel, Get-UKGProJobGroup,
-Get-UKGProJob, and Get-UKGProCompanyDetails cmdlets now render as
-short 3-4 column tables by default -- much easier to scan when a
-query returns multiple records (e.g. the -EmailAddress fan-out from
-v0.3.1 or any list query). Every property is still on the object;
-`| Format-List` shows them all, same convention Get-Mailbox uses in
-Exchange PowerShell.
-
-Column choices (see UKGPro.format.ps1xml):
-  EmploymentDetails: EmployeeId, CompanyId, JobTitle, Status
   PersonDetails    : EmployeeId, FirstName, LastName, EmailAddress
   OrgLevel         : Level, Code, Description, IsActive
   JobGroup         : JobGroupCode, Description, CountryCode
   Job              : JobCode, Title, CountryCode, IsActive
   CompanyDetails   : CompanyId, CompanyCode, MasterCompanyId, IsMaster
 
-Implementation: new UKGPro.format.ps1xml + records tagged with a
-module-scoped TypeName (UKGPro.EmploymentDetails, UKGPro.PersonDetails,
-etc.) via a shared private helper Add-UKGProTypeName. No cmdlet
-signature changes; no property changes; existing scripts that access
-properties by name are unaffected. Scripts that captured Out-String
-output would see different formatted text.
+Also factored the tagging into a shared private Add-UKGProTypeName
+helper (Get-UKGProEmploymentDetails swapped from its inline
+ForEach-Object to use it, for consistency). No cmdlet signature or
+property changes.
+
+v0.3.2 (previous) - Compact default table view for
+Get-UKGProEmploymentDetails (EmployeeId, CompanyId, JobTitle, Status).
+Every property still on the object; `| Format-List` shows them all,
+matching the Get-Mailbox convention in Exchange PowerShell.
+Introduced UKGPro.format.ps1xml + FormatsToProcess in the manifest.
 
 v0.3.1 (previous) - Get-UKGProEmploymentDetails -EmailAddress now
 fans out on multi-match instead of throwing. If person-details returns

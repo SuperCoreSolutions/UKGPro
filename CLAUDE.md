@@ -24,18 +24,24 @@ the PSGallery ruleset, manifest URIs point at `SuperCoreSolutions/UKGPro`
 declared as an optional external dependency. **Published to PSGallery**:
 https://www.powershellgallery.com/packages/UKGPro
 
-Delta from v0.3.1 → v0.3.3 (v0.3.2 was consumed by a pre-existing
-PSGallery package; content shipped in v0.3.3 is what was staged as
-v0.3.2): added `UKGPro.format.ps1xml` (referenced
-from the manifest via `FormatsToProcess`) + a private
-`Add-UKGProTypeName` helper that every Get- cmdlet routes its
-`Invoke-UKGProRequest` results through. Six compact `View` entries —
-one per Get- cmdlet — give the module a consistent Get-Mailbox-style
-output experience: default is a short 3-4 column table,
-`| Format-List` still shows every property (the format file
-deliberately defines no ListControl for any of the types).
+Delta from v0.3.2 → v0.3.3: extended the compact-default-view
+convention (introduced in v0.3.2 for `Get-UKGProEmploymentDetails`)
+to the remaining five Get- cmdlets so the module's output experience
+is consistent across the board. Also factored the tagging out of
+`Get-UKGProEmploymentDetails` into a shared private
+`Add-UKGProTypeName` helper — every Get- cmdlet now pipes its
+`Invoke-UKGProRequest` results through it.
 
-Column choices (see `UKGPro.format.ps1xml`):
+Delta from v0.3.1 → v0.3.2: added `UKGPro.format.ps1xml` (referenced
+from the manifest via `FormatsToProcess`) + a compact default table
+view for `Get-UKGProEmploymentDetails` — `EmployeeId`, `CompanyId`,
+`JobTitle`, `Status` — so the v0.3.1 `-EmailAddress` fan-out doesn't
+dump a wall of text when two employees share an email. Followed the
+Get-Mailbox / Exchange convention: `TableControl` only, no
+`ListControl`, so `| Format-List` falls back to showing every
+property.
+
+Column choices for the full set (see `UKGPro.format.ps1xml`):
 
   - `UKGPro.EmploymentDetails`: EmployeeId, CompanyId, JobTitle, Status
   - `UKGPro.PersonDetails`    : EmployeeId, FirstName, LastName, EmailAddress
@@ -47,9 +53,7 @@ Column choices (see `UKGPro.format.ps1xml`):
 **Convention for new Get- cmdlets**: add a new `View` entry to
 `UKGPro.format.ps1xml` with a `UKGPro.<Something>` TypeName, then pipe
 the `Invoke-UKGProRequest` output through
-`Add-UKGProTypeName -TypeName 'UKGPro.<Something>'`. Motivated by the
-v0.3.1 -EmailAddress fan-out surfacing wall-of-text output when two
-employees share an email.
+`Add-UKGProTypeName -TypeName 'UKGPro.<Something>'`.
 
 Delta from v0.3.0 → v0.3.1: `Get-UKGProEmploymentDetails -EmailAddress`
 no longer throws when person-details returns multiple employees for the
