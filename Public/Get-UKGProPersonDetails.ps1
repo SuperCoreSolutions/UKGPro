@@ -157,9 +157,12 @@ function Get-UKGProPersonDetails {
                 return
             }
         }
-        return $response
+        return $response | Add-UKGProTypeName -TypeName 'UKGPro.PersonDetails'
     }
 
-    # Default: strip everything not on the safe list.
-    $response | Select-Object -Property $script:UKGPro_PersonDetailsSafeFields
+    # Default: strip everything not on the safe list. Tag AFTER the projection
+    # so the emitted objects (not the raw $response entries) carry the TypeName.
+    $response |
+        Select-Object -Property $script:UKGPro_PersonDetailsSafeFields |
+        Add-UKGProTypeName -TypeName 'UKGPro.PersonDetails'
 }

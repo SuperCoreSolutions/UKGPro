@@ -213,9 +213,6 @@ function Get-UKGProEmploymentDetails {
         # no ListControl for this type).
         Invoke-UKGProRequest -Method Get -Path '/personnel/v1/employment-details' `
             -Query $q -PageSize $PageSize -MaxResults $MaxResults |
-            ForEach-Object {
-                $_.PSObject.TypeNames.Insert(0, 'UKGPro.EmploymentDetails')
-                $_
-            }
+            Add-UKGProTypeName -TypeName 'UKGPro.EmploymentDetails'
     }
 }

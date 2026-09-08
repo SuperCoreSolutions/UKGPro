@@ -36,20 +36,31 @@
             ProjectUri   = 'https://github.com/SuperCoreSolutions/UKGPro'
             ExternalModuleDependencies = @('Microsoft.PowerShell.SecretManagement')
             ReleaseNotes = @'
-v0.3.2 - Compact default table view for Get-UKGProEmploymentDetails.
+v0.3.2 - Compact default table views for every Get- cmdlet.
 
-Records returned by Get-UKGProEmploymentDetails now render as a
-four-column table by default (EmployeeId, CompanyId, JobTitle,
-Status) -- much easier to scan when a query returns multiple
-employees (e.g. the -EmailAddress fan-out from v0.3.1 or any list
-query). Every property is still on the object; `| Format-List` shows
-them all, same convention as Get-Mailbox in Exchange.
+Records returned by the Get-UKGProEmploymentDetails,
+Get-UKGProPersonDetails, Get-UKGProOrgLevel, Get-UKGProJobGroup,
+Get-UKGProJob, and Get-UKGProCompanyDetails cmdlets now render as
+short 3-4 column tables by default -- much easier to scan when a
+query returns multiple records (e.g. the -EmailAddress fan-out from
+v0.3.1 or any list query). Every property is still on the object;
+`| Format-List` shows them all, same convention Get-Mailbox uses in
+Exchange PowerShell.
 
-Implementation: new UKGPro.format.ps1xml + records tagged with the
-UKGPro.EmploymentDetails TypeName. No cmdlet signature changes; no
-property changes; existing scripts that access properties by name are
-unaffected. Scripts that captured Out-String output would see
-different formatted text.
+Column choices (see UKGPro.format.ps1xml):
+  EmploymentDetails: EmployeeId, CompanyId, JobTitle, Status
+  PersonDetails    : EmployeeId, FirstName, LastName, EmailAddress
+  OrgLevel         : Level, Code, Description, IsActive
+  JobGroup         : JobGroupCode, Description, CountryCode
+  Job              : JobCode, Title, CountryCode, IsActive
+  CompanyDetails   : CompanyId, CompanyCode, MasterCompanyId, IsMaster
+
+Implementation: new UKGPro.format.ps1xml + records tagged with a
+module-scoped TypeName (UKGPro.EmploymentDetails, UKGPro.PersonDetails,
+etc.) via a shared private helper Add-UKGProTypeName. No cmdlet
+signature changes; no property changes; existing scripts that access
+properties by name are unaffected. Scripts that captured Out-String
+output would see different formatted text.
 
 v0.3.1 (previous) - Get-UKGProEmploymentDetails -EmailAddress now
 fans out on multi-match instead of throwing. If person-details returns

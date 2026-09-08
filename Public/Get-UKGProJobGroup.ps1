@@ -57,5 +57,6 @@ function Get-UKGProJobGroup {
     if ($CountryCode)  { $q['jobGroupCountryCode'] = $CountryCode }
 
     Invoke-UKGProRequest -Method Get -Path '/configuration/v1/jobgroup' `
-        -Query $q -PageSize $PageSize -MaxResults $MaxResults
+        -Query $q -PageSize $PageSize -MaxResults $MaxResults |
+        Add-UKGProTypeName -TypeName 'UKGPro.JobGroup'
 }

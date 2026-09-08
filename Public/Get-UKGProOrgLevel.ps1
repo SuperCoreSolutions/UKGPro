@@ -78,7 +78,8 @@ function Get-UKGProOrgLevel {
     if ($hasLevel -and $hasCode) {
         return Invoke-UKGProRequest -Method Get `
             -Path "/configuration/v1/org-levels/$Level/$Code" `
-            -NoPaging
+            -NoPaging |
+            Add-UKGProTypeName -TypeName 'UKGPro.OrgLevel'
     }
 
     # --- Otherwise, hit the list endpoint (with any server-side filters) ---
@@ -102,7 +103,9 @@ function Get-UKGProOrgLevel {
     # -Level alone (no -Code) => client-side filter by level, since the list
     # endpoint has no level query parameter.
     if ($hasLevel -and -not $hasCode) {
-        return $results | Where-Object { $_.level -eq $Level }
+        return $results |
+            Where-Object { $_.level -eq $Level } |
+            Add-UKGProTypeName -TypeName 'UKGPro.OrgLevel'
     }
-    return $results
+    return $results | Add-UKGProTypeName -TypeName 'UKGPro.OrgLevel'
 }

@@ -72,5 +72,6 @@ function Get-UKGProCompanyDetails {
     }
 
     Invoke-UKGProRequest -Method Get -Path '/configuration/v1/company-details' `
-        -Query $q -PageSize $PageSize -MaxResults $MaxResults
+        -Query $q -PageSize $PageSize -MaxResults $MaxResults |
+        Add-UKGProTypeName -TypeName 'UKGPro.CompanyDetails'
 }

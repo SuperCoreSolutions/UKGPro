@@ -69,7 +69,8 @@ function Get-UKGProJob {
     if ($Code -and -not $hasOtherFilters) {
         return Invoke-UKGProRequest -Method Get `
             -Path "/configuration/v2/jobs/$Code" `
-            -NoPaging
+            -NoPaging |
+            Add-UKGProTypeName -TypeName 'UKGPro.Job'
     }
 
     # --- Otherwise, list endpoint with any provided filters ---
@@ -83,5 +84,6 @@ function Get-UKGProJob {
     }
 
     Invoke-UKGProRequest -Method Get -Path '/configuration/v2/jobs' `
-        -Query $q -PageSize $PageSize -MaxResults $MaxResults
+        -Query $q -PageSize $PageSize -MaxResults $MaxResults |
+        Add-UKGProTypeName -TypeName 'UKGPro.Job'
 }

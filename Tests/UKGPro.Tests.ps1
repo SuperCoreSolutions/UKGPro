@@ -441,6 +441,24 @@ Describe 'Get-UKGProPersonDetails' {
         # interacts oddly with the interactive prompt machinery). This is a standard
         # PowerShell mechanism; the two tests above cover the redaction and bypass
         # paths that are module-specific. Prompt behavior is manually verified.
+
+        It 'tags returned records with the UKGPro.PersonDetails TypeName (default and -IncludePII paths)' {
+            Mock Invoke-RestMethod {
+                @([pscustomobject]@{
+                    employeeId   = 'EE1'
+                    firstName    = 'Alex'
+                    lastName     = 'Doe'
+                    emailAddress = 'alex.doe@example.com'
+                    ssn          = '123-45-6789'
+                })
+            }
+
+            $default = @(Get-UKGProPersonDetails -EmployeeId 'EE1')
+            $default[0].PSObject.TypeNames[0] | Should -Be 'UKGPro.PersonDetails'
+
+            $full = @(Get-UKGProPersonDetails -EmployeeId 'EE1' -IncludePII -Force)
+            $full[0].PSObject.TypeNames[0] | Should -Be 'UKGPro.PersonDetails'
+        }
     }
 }
 
@@ -533,6 +551,27 @@ Describe 'Get-UKGProOrgLevel' {
             ($r | Measure-Object).Count       | Should -Be 1
             $r.code                           | Should -Be 'ACCT'
         }
+
+        It 'tags returned records with the UKGPro.OrgLevel TypeName (list + unique-lookup paths)' {
+            Mock Invoke-RestMethod {
+                if ($Uri.AbsoluteUri -match '/org-levels/\d+/') {
+                    return [pscustomobject]@{ level = 2; code = 'ACCT'; description = 'Accounting' }
+                }
+                return @(
+                    [pscustomobject]@{ level = 2; code = 'ACCT'; description = 'Accounting' }
+                    [pscustomobject]@{ level = 2; code = 'SALES'; description = 'Sales' }
+                )
+            }
+
+            $unique = Get-UKGProOrgLevel -Level 2 -Code 'ACCT'
+            $unique.PSObject.TypeNames[0] | Should -Be 'UKGPro.OrgLevel'
+
+            $listAll = @(Get-UKGProOrgLevel)
+            $listAll[0].PSObject.TypeNames[0] | Should -Be 'UKGPro.OrgLevel'
+
+            $listFiltered = @(Get-UKGProOrgLevel -Level 2)
+            $listFiltered[0].PSObject.TypeNames[0] | Should -Be 'UKGPro.OrgLevel'
+        }
     }
 }
 
@@ -581,6 +620,20 @@ Describe 'Get-UKGProJobGroup' {
             Get-UKGProJobGroup -CountryCode 'US' | Out-Null
 
             $script:calls[0].Uri.AbsoluteUri | Should -Match 'jobGroupCountryCode=US'
+        }
+
+        It 'tags returned records with the UKGPro.JobGroup TypeName' {
+            Mock Invoke-RestMethod {
+                @(
+                    [pscustomobject]@{ jobGroupCode = 'MGMT'; jobGroupCodeDescription = 'Management'; jobGroupCountryCode = 'US' }
+                    [pscustomobject]@{ jobGroupCode = 'ENG';  jobGroupCodeDescription = 'Engineering'; jobGroupCountryCode = 'US' }
+                )
+            }
+            $r = @(Get-UKGProJobGroup)
+            $r.Count | Should -Be 2
+            foreach ($item in $r) {
+                $item.PSObject.TypeNames[0] | Should -Be 'UKGPro.JobGroup'
+            }
         }
     }
 }
@@ -648,6 +701,24 @@ Describe 'Get-UKGProJob' {
             $script:calls[0].Uri.AbsoluteUri | Should -Match 'jobCode=SWENG'
             $script:calls[0].Uri.AbsoluteUri | Should -Match 'isActive=true'
         }
+
+        It 'tags returned records with the UKGPro.Job TypeName (unique-lookup + list paths)' {
+            Mock Invoke-RestMethod {
+                if ($Uri.AbsoluteUri -match '/jobs/[A-Z]+$') {
+                    return [pscustomobject]@{ jobCode = 'SWENG'; title = 'Software Engineer'; countryCode = 'US'; isActive = $true }
+                }
+                return @(
+                    [pscustomobject]@{ jobCode = 'SWENG';   title = 'Software Engineer';   countryCode = 'US'; isActive = $true }
+                    [pscustomobject]@{ jobCode = 'MGR';     title = 'Manager';             countryCode = 'US'; isActive = $true }
+                )
+            }
+
+            $unique = Get-UKGProJob -Code 'SWENG'
+            $unique.PSObject.TypeNames[0] | Should -Be 'UKGPro.Job'
+
+            $list = @(Get-UKGProJob)
+            $list[0].PSObject.TypeNames[0] | Should -Be 'UKGPro.Job'
+        }
     }
 }
 
@@ -695,6 +766,20 @@ Describe 'Get-UKGProCompanyDetails' {
             Get-UKGProCompanyDetails -IsMasterCompany $true | Out-Null
 
             $script:calls[0].Uri.AbsoluteUri | Should -Match 'isMasterCompany=true'
+        }
+
+        It 'tags returned records with the UKGPro.CompanyDetails TypeName' {
+            Mock Invoke-RestMethod {
+                @(
+                    [pscustomobject]@{ companyId = 'ACME'; companyCode = 'ACM'; masterCompanyId = 'ACME'; isMasterCompany = $true }
+                    [pscustomobject]@{ companyId = 'BETA'; companyCode = 'BTA'; masterCompanyId = 'ACME'; isMasterCompany = $false }
+                )
+            }
+            $r = @(Get-UKGProCompanyDetails)
+            $r.Count | Should -Be 2
+            foreach ($item in $r) {
+                $item.PSObject.TypeNames[0] | Should -Be 'UKGPro.CompanyDetails'
+            }
         }
     }
 }

@@ -222,15 +222,7 @@ Wraps `GET /personnel/v1/employment-details`. All filters are optional and appli
 <a id="get-ukgproemploymentdetails-notes"></a>
 **Note on `-EmailAddress`:** the employment-details endpoint doesn't accept `emailAddress` as a query parameter, so the module transparently resolves email → `employeeId` via `GET /personnel/v1/person-details` (a View-only lookup), then queries employment-details with the resolved ID. If more than one distinct employee shares the email (rare but possible on some tenants), the cmdlet fans out — one employment-details call per resolved employee — and returns the union rather than throwing. Total HTTP calls: `1 + N` where `N` is the number of matches.
 
-**Note on output formatting:** returned records default to a compact 4-column table (`EmployeeId`, `CompanyId`, `JobTitle`, `Status` — populated from the `employeeStatusCode` field) — enough to distinguish multiple employees at a glance. Every property is still on the object; pipe through `Format-List` to see them all. Same convention `Get-Mailbox` uses in Exchange PowerShell:
-
-```powershell
-# Compact 4-column table by default
-Get-UKGProEmploymentDetails -EmailAddress 'shared@example.com'
-
-# Every property on every record
-Get-UKGProEmploymentDetails -EmailAddress 'shared@example.com' | Format-List
-```
+**Note on output formatting:** returned records default to the compact 4-column table view described in [Output formatting](#output-formatting) below.
 
 ### Get-UKGProPersonDetails
 
@@ -384,6 +376,29 @@ Get-UKGProCompanyDetails -CompanyId 'ACME'
 
 # Only master companies
 Get-UKGProCompanyDetails -IsMasterCompany $true
+```
+
+## Output formatting
+
+Every `Get-` cmdlet returns objects tagged with a module-scoped TypeName that resolves to a compact table view — the same convention Exchange PowerShell uses (`Get-Mailbox` = short table, `Get-Mailbox | fl` = every property).
+
+| Cmdlet | Default columns |
+|---|---|
+| `Get-UKGProEmploymentDetails` | `EmployeeId`, `CompanyId`, `JobTitle`, `Status` |
+| `Get-UKGProPersonDetails` | `EmployeeId`, `FirstName`, `LastName`, `EmailAddress` |
+| `Get-UKGProOrgLevel` | `Level`, `Code`, `Description`, `IsActive` |
+| `Get-UKGProJobGroup` | `JobGroupCode`, `Description`, `CountryCode` |
+| `Get-UKGProJob` | `JobCode`, `Title`, `CountryCode`, `IsActive` |
+| `Get-UKGProCompanyDetails` | `CompanyId`, `CompanyCode`, `MasterCompanyId`, `IsMaster` |
+
+Every property is still on the object — the compact view only affects the default `Format-Table`. Pipe through `Format-List` any time you want to see everything:
+
+```powershell
+# Compact table by default
+Get-UKGProEmploymentDetails -EmailAddress 'shared@example.com'
+
+# Every property on every record
+Get-UKGProEmploymentDetails -EmailAddress 'shared@example.com' | Format-List
 ```
 
 ## Date filters

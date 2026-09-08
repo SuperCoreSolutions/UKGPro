@@ -2,10 +2,20 @@
 <!--
     UKGPro format definitions.
 
-    Only defines TableControl views. Deliberately no ListControl entries:
-    that way `| Format-List` on a tagged object falls back to PowerShell's
-    default "show every property" behavior (same convention Exchange uses:
-    `Get-Mailbox X` = compact table, `Get-Mailbox X | fl` = everything).
+    Each View defines a compact TableControl for one UKGPro.* TypeName. No
+    ListControl entries are defined for these types on purpose: `| Format-List`
+    on a tagged object then falls back to PowerShell's default "show every
+    property" behavior (the same convention Exchange uses: `Get-Mailbox X`
+    is a compact table, `Get-Mailbox X | fl` is everything).
+
+    Every Get- cmdlet in the module routes its results through the private
+    Add-UKGProTypeName helper, which prepends the matching TypeName to
+    PSObject.TypeNames so this file's views take precedence over the generic
+    PSCustomObject default.
+
+    Column choices favor "help me tell multiple records apart at a glance"
+    for the two most common cases: a fan-out query returning several
+    employees, or a broad list query returning dozens of records.
 -->
 <Configuration>
   <ViewDefinitions>
@@ -17,34 +27,141 @@
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
-          <TableColumnHeader>
-            <Label>EmployeeId</Label>
-          </TableColumnHeader>
-          <TableColumnHeader>
-            <Label>CompanyId</Label>
-          </TableColumnHeader>
-          <TableColumnHeader>
-            <Label>JobTitle</Label>
-          </TableColumnHeader>
-          <TableColumnHeader>
-            <Label>Status</Label>
-          </TableColumnHeader>
+          <TableColumnHeader><Label>EmployeeId</Label></TableColumnHeader>
+          <TableColumnHeader><Label>CompanyId</Label></TableColumnHeader>
+          <TableColumnHeader><Label>JobTitle</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Status</Label></TableColumnHeader>
         </TableHeaders>
         <TableRowEntries>
           <TableRowEntry>
             <TableColumnItems>
-              <TableColumnItem>
-                <PropertyName>employeeId</PropertyName>
-              </TableColumnItem>
-              <TableColumnItem>
-                <PropertyName>companyId</PropertyName>
-              </TableColumnItem>
-              <TableColumnItem>
-                <PropertyName>jobTitle</PropertyName>
-              </TableColumnItem>
-              <TableColumnItem>
-                <PropertyName>employeeStatusCode</PropertyName>
-              </TableColumnItem>
+              <TableColumnItem><PropertyName>employeeId</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>companyId</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>jobTitle</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>employeeStatusCode</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <View>
+      <Name>UKGPro.PersonDetails</Name>
+      <ViewSelectedBy>
+        <TypeName>UKGPro.PersonDetails</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>EmployeeId</Label></TableColumnHeader>
+          <TableColumnHeader><Label>FirstName</Label></TableColumnHeader>
+          <TableColumnHeader><Label>LastName</Label></TableColumnHeader>
+          <TableColumnHeader><Label>EmailAddress</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>employeeId</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>firstName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>lastName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>emailAddress</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <View>
+      <Name>UKGPro.OrgLevel</Name>
+      <ViewSelectedBy>
+        <TypeName>UKGPro.OrgLevel</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>Level</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Code</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Description</Label></TableColumnHeader>
+          <TableColumnHeader><Label>IsActive</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>level</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>code</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>description</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>isActive</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <View>
+      <Name>UKGPro.JobGroup</Name>
+      <ViewSelectedBy>
+        <TypeName>UKGPro.JobGroup</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>JobGroupCode</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Description</Label></TableColumnHeader>
+          <TableColumnHeader><Label>CountryCode</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>jobGroupCode</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>jobGroupCodeDescription</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>jobGroupCountryCode</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <View>
+      <Name>UKGPro.Job</Name>
+      <ViewSelectedBy>
+        <TypeName>UKGPro.Job</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>JobCode</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Title</Label></TableColumnHeader>
+          <TableColumnHeader><Label>CountryCode</Label></TableColumnHeader>
+          <TableColumnHeader><Label>IsActive</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>jobCode</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>title</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>countryCode</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>isActive</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <View>
+      <Name>UKGPro.CompanyDetails</Name>
+      <ViewSelectedBy>
+        <TypeName>UKGPro.CompanyDetails</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>CompanyId</Label></TableColumnHeader>
+          <TableColumnHeader><Label>CompanyCode</Label></TableColumnHeader>
+          <TableColumnHeader><Label>MasterCompanyId</Label></TableColumnHeader>
+          <TableColumnHeader><Label>IsMaster</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>companyId</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>companyCode</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>masterCompanyId</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>isMasterCompany</PropertyName></TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
         </TableRowEntries>
