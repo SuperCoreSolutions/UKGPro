@@ -128,6 +128,7 @@ Credentials are stored in a module-private session and attached automatically to
 | [`Get-UKGProJobGroup`](#get-ukgprojobgroup) | Retrieve job-group configuration rows (jobGroupCode → description) |
 | [`Get-UKGProJob`](#get-ukgprojob) | Retrieve job configuration rows (via v2 endpoints), unique lookup or filtered list |
 | [`Get-UKGProCompanyDetails`](#get-ukgprocompanydetails) | Retrieve company records (name, address, tax ID, org-level codes) for master and component companies |
+| [`Get-UKGProLocation`](#get-ukgprolocation) | Retrieve location configuration rows (address, country, GL segment), unique lookup by code or filtered list |
 
 Every cmdlet also gets full comment-based help — `Get-Help <Cmdlet> -Full` in PowerShell shows synopsis, per-parameter descriptions, and worked examples.
 
