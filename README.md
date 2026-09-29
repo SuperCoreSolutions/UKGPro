@@ -120,15 +120,15 @@ Credentials are stored in a module-private session and attached automatically to
 |---|---|
 | [`Connect-UKGPro`](#connect-ukgpro) | Open a session (Basic + two API-key headers). Three flows: explicit, `-FromVault`, `-FromEnvironment` |
 | [`Disconnect-UKGPro`](#disconnect-ukgpro) | Clear the session |
+| [`Get-UKGProCompanyDetails`](#get-ukgprocompanydetails) | Retrieve company records (name, address, tax ID, org-level codes) for master and component companies |
+| [`Get-UKGProEmploymentDetails`](#get-ukgproemploymentdetails) | Retrieve employment records, with filters |
+| [`Get-UKGProJob`](#get-ukgprojob) | Retrieve job configuration rows (via v2 endpoints), unique lookup or filtered list |
+| [`Get-UKGProJobGroup`](#get-ukgprojobgroup) | Retrieve job-group configuration rows (jobGroupCode → description) |
+| [`Get-UKGProLocation`](#get-ukgprolocation) | Retrieve location configuration rows (address, country, GL segment), unique lookup by code or filtered list |
+| [`Get-UKGProOrgLevel`](#get-ukgproorglevel) | Retrieve org-level configuration rows (level + code → description), unique lookup or filtered list |
+| [`Get-UKGProPersonDetails`](#get-ukgpropersondetails) | Retrieve person records (name / contact / address), by ID or email |
 | [`Save-UKGProCredential`](#save-ukgprocredential) | One-time SecretManagement setup — writes hostname + tenant API keys (never username/password) |
 | [`Update-UKGProCredential`](#update-ukgprocredential) | Partial rotation of stored secrets — rotate a leaked API key without re-entering everything |
-| [`Get-UKGProEmploymentDetails`](#get-ukgproemploymentdetails) | Retrieve employment records, with filters |
-| [`Get-UKGProPersonDetails`](#get-ukgpropersondetails) | Retrieve person records (name / contact / address), by ID or email |
-| [`Get-UKGProOrgLevel`](#get-ukgproorglevel) | Retrieve org-level configuration rows (level + code → description), unique lookup or filtered list |
-| [`Get-UKGProJobGroup`](#get-ukgprojobgroup) | Retrieve job-group configuration rows (jobGroupCode → description) |
-| [`Get-UKGProJob`](#get-ukgprojob) | Retrieve job configuration rows (via v2 endpoints), unique lookup or filtered list |
-| [`Get-UKGProCompanyDetails`](#get-ukgprocompanydetails) | Retrieve company records (name, address, tax ID, org-level codes) for master and component companies |
-| [`Get-UKGProLocation`](#get-ukgprolocation) | Retrieve location configuration rows (address, country, GL segment), unique lookup by code or filtered list |
 
 Every cmdlet also gets full comment-based help — `Get-Help <Cmdlet> -Full` in PowerShell shows synopsis, per-parameter descriptions, and worked examples.
 
