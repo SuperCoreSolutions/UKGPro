@@ -144,6 +144,31 @@
     </View>
 
     <View>
+      <Name>UKGPro.Location</Name>
+      <ViewSelectedBy>
+        <TypeName>UKGPro.Location</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>LocationCode</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Description</Label></TableColumnHeader>
+          <TableColumnHeader><Label>City</Label></TableColumnHeader>
+          <TableColumnHeader><Label>IsActive</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>locationCode</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>description</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>city</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>isActive</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <View>
       <Name>UKGPro.CompanyDetails</Name>
       <ViewSelectedBy>
         <TypeName>UKGPro.CompanyDetails</TypeName>

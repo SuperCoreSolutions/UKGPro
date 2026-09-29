@@ -16,13 +16,38 @@ deprovisioning.
 
 Distribution goal: GitHub source repo + publish to the PowerShell Gallery.
 
-## Current state (v0.3.3)
+## Current state (v1.0.0)
 
-v0.3.3 (2026-09-08): 10 exported cmdlets, zero PSScriptAnalyzer findings under
-the PSGallery ruleset, manifest URIs point at `SuperCoreSolutions/UKGPro`
-(LLC-org owned as of 2026-09-02), Microsoft.PowerShell.SecretManagement
-declared as an optional external dependency. **Published to PSGallery**:
+v1.0.0 (2026-09-29): **first stable release**. 11 exported cmdlets, zero
+PSScriptAnalyzer findings under the PSGallery ruleset, manifest URIs point at
+`SuperCoreSolutions/UKGPro` (LLC-org owned as of 2026-09-02),
+Microsoft.PowerShell.SecretManagement declared as an optional external
+dependency. **Published to PSGallery**:
 https://www.powershellgallery.com/packages/UKGPro
+
+Semver commitment starting here: any future breaking change bumps to 2.0.
+The API surface being committed is the 11 exported cmdlets, their parameter
+shapes, output types (including the `UKGPro.*` TypeName tags used by the
+format views), and the auth/session model. Adding cmdlets, adding
+non-breaking parameters, or changing internal implementation are 1.x moves.
+Scope is intentionally the read-only IAM/offboarding surface — write cmdlets
+would be a separate design conversation if they ever land.
+
+Delta from v0.3.3 → v1.0.0 (skipped v0.4.0 — never published):
+
+  - Added `Get-UKGProLocation`, wrapping `GET /configuration/v1/locations`
+    (list, with `-CountryCode` / `-IsActive` filters) and
+    `GET /configuration/v1/locations/{code}` (unique lookup via `-Code`).
+    Same routing shape as `Get-UKGProJob`, but `-Code` is mutually exclusive
+    with the list filters (parameter sets `ByCode` vs `List`) because the
+    list endpoint doesn't accept `locationCode` as a query param. Compact
+    view added to `UKGPro.format.ps1xml`: `UKGPro.Location` →
+    `LocationCode`, `Description`, `City`, `IsActive`.
+  - Bumped to 1.0.0 (stable milestone; see above).
+  - Manifest `Description` tightened from "General-purpose PowerShell wrapper
+    for the UKG Pro HCM REST API" to a scope-honest version that names the
+    actual cmdlets and calls out the read-only IAM/offboarding focus. README
+    opening + Roadmap sections rewritten to match.
 
 Delta from v0.3.2 → v0.3.3: extended the compact-default-view
 convention (introduced in v0.3.2 for `Get-UKGProEmploymentDetails`)
@@ -49,6 +74,7 @@ Column choices for the full set (see `UKGPro.format.ps1xml`):
   - `UKGPro.JobGroup`         : JobGroupCode, Description, CountryCode
   - `UKGPro.Job`              : JobCode, Title, CountryCode, IsActive
   - `UKGPro.CompanyDetails`   : CompanyId, CompanyCode, MasterCompanyId, IsMaster
+  - `UKGPro.Location`         : LocationCode, Description, City, IsActive
 
 **Convention for new Get- cmdlets**: add a new `View` entry to
 `UKGPro.format.ps1xml` with a `UKGPro.<Something>` TypeName, then pipe

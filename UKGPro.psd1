@@ -1,6 +1,6 @@
 @{
     RootModule           = 'UKGPro.psm1'
-    ModuleVersion        = '0.3.3'
+    ModuleVersion        = '1.0.0'
     FormatsToProcess     = @('UKGPro.format.ps1xml')
     CompatiblePSEditions  = @('Desktop', 'Core')
     GUID                 = 'ce04853e-e752-4d4b-b9a5-3297f933dfd2'
@@ -9,7 +9,7 @@
     CompanyName          = 'Super Core Solutions LLC'
     Copyright            = '(c) Super Core Solutions LLC. All rights reserved.'
 
-    Description          = 'General-purpose PowerShell wrapper for the UKG Pro HCM REST API. Provides Get- cmdlets for personnel/v1 (employment, person) and configuration/v1 (org-levels, jobs, job-groups, company-details) endpoints with unified authentication, pagination, date-filter handling, secure-by-default PII redaction, and optional SecretManagement-backed auth.'
+    Description          = 'PowerShell module for the UKG Pro HCM REST API, focused on read-only IAM/offboarding automation. Provides Get- cmdlets for employment, person, org-level, job, job-group, company-details, and location lookups with unified authentication, pagination, date-filter handling, secure-by-default PII redaction, and optional SecretManagement-backed auth.'
 
     PowerShellVersion    = '5.1'
 
@@ -24,6 +24,7 @@
         'Get-UKGProJobGroup'
         'Get-UKGProJob'
         'Get-UKGProCompanyDetails'
+        'Get-UKGProLocation'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
@@ -36,7 +37,17 @@
             ProjectUri   = 'https://github.com/SuperCoreSolutions/UKGPro'
             ExternalModuleDependencies = @('Microsoft.PowerShell.SecretManagement')
             ReleaseNotes = @'
-v0.3.3 - Compact default table views extended to the remaining
+v1.0.0 - First stable release. The public API surface (11 exported
+cmdlets, parameter shapes, output types, compact-view formatting) is
+committed: any future breaking change bumps to 2.0. Also in this
+release: new Get-UKGProLocation cmdlet wrapping
+/configuration/v1/locations (list + unique lookup by -Code, with
+-CountryCode / -IsActive filters; compact view: LocationCode,
+Description, City, IsActive). Manifest description also tightened to
+accurately reflect scope (read-only IAM/offboarding-focused Get-
+surface) rather than "general-purpose UKG Pro HCM wrapper".
+
+v0.3.3 (previous) - Compact default table views extended to the remaining
 Get- cmdlets (Get-UKGProPersonDetails, Get-UKGProOrgLevel,
 Get-UKGProJobGroup, Get-UKGProJob, Get-UKGProCompanyDetails), so
 every Get- cmdlet in the module now shares the same Get-Mailbox-style

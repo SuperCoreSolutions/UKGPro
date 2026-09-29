@@ -30,7 +30,8 @@ Describe 'Module surface' {
             'Save-UKGProCredential', 'Update-UKGProCredential',
             'Get-UKGProEmploymentDetails', 'Get-UKGProPersonDetails',
             'Get-UKGProOrgLevel',
-            'Get-UKGProJobGroup', 'Get-UKGProJob', 'Get-UKGProCompanyDetails'
+            'Get-UKGProJobGroup', 'Get-UKGProJob', 'Get-UKGProCompanyDetails',
+            'Get-UKGProLocation'
         )
         (Get-Command -Module UKGPro).Name | Sort-Object | Should -Be ($expected | Sort-Object)
     }
@@ -780,6 +781,85 @@ Describe 'Get-UKGProCompanyDetails' {
             foreach ($item in $r) {
                 $item.PSObject.TypeNames[0] | Should -Be 'UKGPro.CompanyDetails'
             }
+        }
+    }
+}
+
+Describe 'Get-UKGProLocation' {
+    InModuleScope UKGPro {
+        BeforeEach {
+            $sec  = ConvertTo-SecureString 'p' -AsPlainText -Force
+            $cred = [pscredential]::new('u', $sec)
+            Connect-UKGPro -Hostname 'service5.ultipro.com' -Credential $cred `
+                -CustomerApiKey 'CUSTKEY123' -UserApiKey 'USRKEY456'
+            $script:calls = New-Object 'System.Collections.Generic.List[hashtable]'
+        }
+
+        It '-Code hits the unique-lookup endpoint with no query params' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri; Headers = $Headers })
+                [pscustomobject]@{ locationCode = 'HQ01'; description = 'Headquarters'; city = 'Atlanta'; isActive = $true }
+            }
+
+            $r = Get-UKGProLocation -Code 'HQ01'
+
+            $script:calls.Count               | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri  | Should -Match '/configuration/v1/locations/HQ01$'
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'page='
+            $script:calls[0].Uri.AbsoluteUri  | Should -Not -Match 'per_Page='
+            $script:calls[0].Headers['x-api-key'] | Should -Be 'USRKEY456'
+            $r.description                    | Should -Be 'Headquarters'
+        }
+
+        It 'no-args hits the list endpoint with no filter query params' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProLocation | Out-Null
+
+            $script:calls.Count              | Should -Be 1
+            $script:calls[0].Uri.AbsoluteUri | Should -Match '/configuration/v1/locations\?'
+            $script:calls[0].Uri.AbsoluteUri | Should -Not -Match 'countryCode='
+            $script:calls[0].Uri.AbsoluteUri | Should -Not -Match 'isActive='
+        }
+
+        It '-CountryCode + -IsActive filters compose server-side (isActive lowercase)' {
+            Mock Invoke-RestMethod {
+                $script:calls.Add(@{ Uri = $Uri })
+                @()
+            }
+
+            Get-UKGProLocation -CountryCode 'US' -IsActive $true | Out-Null
+
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'countryCode=US'
+            $script:calls[0].Uri.AbsoluteUri | Should -Match 'isActive=true'
+        }
+
+        It '-Code combined with a list filter fails parameter-set resolution' {
+            # ByCode vs List parameter sets are mutually exclusive by design —
+            # the list endpoint doesn't accept locationCode as a query param.
+            { Get-UKGProLocation -Code 'HQ01' -IsActive $true } |
+                Should -Throw '*Parameter set cannot be resolved*'
+        }
+
+        It 'tags returned records with the UKGPro.Location TypeName (unique-lookup + list paths)' {
+            Mock Invoke-RestMethod {
+                if ($Uri.AbsoluteUri -match '/locations/[A-Z0-9]+$') {
+                    return [pscustomobject]@{ locationCode = 'HQ01'; description = 'Headquarters'; city = 'Atlanta'; isActive = $true }
+                }
+                return @(
+                    [pscustomobject]@{ locationCode = 'HQ01'; description = 'Headquarters'; city = 'Atlanta'; isActive = $true }
+                    [pscustomobject]@{ locationCode = 'REM';  description = 'Remote';       city = '';        isActive = $true }
+                )
+            }
+
+            $unique = Get-UKGProLocation -Code 'HQ01'
+            $unique.PSObject.TypeNames[0] | Should -Be 'UKGPro.Location'
+
+            $list = @(Get-UKGProLocation)
+            $list[0].PSObject.TypeNames[0] | Should -Be 'UKGPro.Location'
         }
     }
 }

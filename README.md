@@ -5,9 +5,9 @@
 [![PowerShell Gallery Platform](https://img.shields.io/powershellgallery/p/UKGPro)](https://www.powershellgallery.com/packages/UKGPro)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A general-purpose PowerShell module wrapping the **UKG Pro HCM** REST API. Provides typed `Get-` cmdlets for the `personnel/v1` (employment records, person details) and `configuration/v1` (org-levels, more to come) endpoint families, with a shared authentication, pagination, and date-filter layer so callers work with objects and parameters instead of URL strings and query encoding.
+A PowerShell module wrapping the **UKG Pro HCM** REST API, focused on read-only IAM/offboarding automation. Provides typed `Get-` cmdlets for the `personnel/v1` (employment, person) and `configuration/v1` (org-levels, jobs, job-groups, company-details, locations) endpoint families, with a shared authentication, pagination, and date-filter layer so callers work with objects and parameters instead of URL strings and query encoding.
 
-Common use cases include HR data extracts, employee-record reporting, IAM provisioning/deprovisioning workflows, and one-off lookups from an interactive PowerShell session — but nothing in the module is tied to any single workflow. Any script that needs to read UKG Pro data can use it.
+Common use cases include HR data extracts, employee-record reporting, IAM provisioning/deprovisioning workflows, and one-off lookups from an interactive PowerShell session. Any read-only workflow against these endpoint families can use it.
 
 Companion to the separate [UKGHRSD](../UKGHRSD) module (which covers UKG HR Service Delivery). The two are intentionally separate: different platform, authentication, and base URL.
 
@@ -295,6 +295,20 @@ Wraps `GET /configuration/v1/company-details`. Returns full company records for 
 | `-MaxResults` | `int` | Cap total records across all pages. `0` = no cap. Default: `0`. |
 | `-PageSize` | `int` | Rows per page. Default: `100`. |
 
+### Get-UKGProLocation
+
+Routes between `GET /configuration/v1/locations` (list) and `GET /configuration/v1/locations/{code}` (unique lookup). Location codes show up on employment records as `locationCode`; this cmdlet resolves them to full location records including description, address, country, and the GL segment.
+
+`-Code` is mutually exclusive with `-CountryCode` / `-IsActive` (enforced by parameter sets) because the list endpoint doesn't accept `locationCode` as a query parameter.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `-Code` | `string` | Location code (e.g. `HQ01`). Hits the unique-lookup endpoint and returns a single location. |
+| `-CountryCode` | `string` | Filter list by country code. Server-side filter. |
+| `-IsActive` | `bool` | Filter list by active/inactive. Serialized to the URL as lowercase (`true` / `false`). |
+| `-MaxResults` | `int` | Cap total records across all pages. `0` = no cap. Default: `0`. |
+| `-PageSize` | `int` | Rows per page. Default: `100`. |
+
 ## Examples
 
 ```powershell
@@ -376,6 +390,17 @@ Get-UKGProCompanyDetails -CompanyId 'ACME'
 
 # Only master companies
 Get-UKGProCompanyDetails -IsMasterCompany $true
+
+# --- Locations (configuration/v1/locations) ---
+
+# Unique lookup — full location record by code
+Get-UKGProLocation -Code 'HQ01'
+
+# Every location in the tenant
+Get-UKGProLocation
+
+# All active US locations
+Get-UKGProLocation -CountryCode 'US' -IsActive $true
 ```
 
 ## Output formatting
@@ -390,6 +415,7 @@ Every `Get-` cmdlet returns objects tagged with a module-scoped TypeName that re
 | `Get-UKGProJobGroup` | `JobGroupCode`, `Description`, `CountryCode` |
 | `Get-UKGProJob` | `JobCode`, `Title`, `CountryCode`, `IsActive` |
 | `Get-UKGProCompanyDetails` | `CompanyId`, `CompanyCode`, `MasterCompanyId`, `IsMaster` |
+| `Get-UKGProLocation` | `LocationCode`, `Description`, `City`, `IsActive` |
 
 Every property is still on the object — the compact view only affects the default `Format-Table`. Pipe through `Format-List` any time you want to see everything:
 
@@ -419,7 +445,7 @@ Tests mock the HTTP layer — no network or live tenant required.
 
 ## Roadmap
 
-Additional read cmdlets across the `personnel/v1` and `configuration/v1` endpoint families: employee demographics, supervisor details, job history, employee status, locations, positions, and more. Write cmdlets later where the API supports them and where they can be exposed cleanly. A 1.0.0 release once every shipped cmdlet has been live-tenant validated.
+The 1.0 line is intentionally scoped to the read-only IAM/offboarding surface. Additional `Get-` cmdlets across the remaining `personnel/v1` and `configuration/v1` endpoint families (positions, position reports, user profile details, code tables, and more) may land in future 1.x releases as concrete use cases arise. Write cmdlets are not currently on the roadmap — they'd land as a separate design consideration if a real use case emerges, so scripts written today can rely on the current surface being read-only.
 
 ## License
 
